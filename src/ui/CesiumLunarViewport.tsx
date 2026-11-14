@@ -8,6 +8,7 @@ import {
   Vector3D,
 } from '../types';
 import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw } from 'lucide-react';
+import { Button, Badge } from '@/components/ui';
 
 interface CesiumLunarViewportProps {
   viewMode: ComparisonViewMode;
@@ -669,15 +670,17 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
           </div>
         )}
 
-        {/* Floating NASA Zoom Controls Widget (Right Side of Viewport) */}
+        {/* Floating NASA Zoom Controls Widget (Right Side of Viewport) using shadcn Button */}
         <div className="absolute right-4 top-20 z-20 flex flex-col items-center bg-space-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-2xl gap-1.5 font-mono">
-          <button
+          <Button
+            variant="default"
+            size="icon"
             onClick={handleZoomIn}
             title="Zoom In (+) [Keyboard: +]"
-            className="p-2 rounded-lg bg-space-800 hover:bg-space-700 text-cyan-300 hover:text-white border border-slate-700 transition-colors shadow-sm"
+            className="text-cyan-300 hover:text-white"
           >
             <Plus className="w-4 h-4" />
-          </button>
+          </Button>
 
           <div className="py-1 px-1.5 text-center flex flex-col items-center">
             <span className="text-[9px] text-slate-500 uppercase">ALT</span>
@@ -686,85 +689,91 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             </span>
           </div>
 
-          <button
+          <Button
+            variant="default"
+            size="icon"
             onClick={handleZoomOut}
             title="Zoom Out (-) [Keyboard: -]"
-            className="p-2 rounded-lg bg-space-800 hover:bg-space-700 text-cyan-300 hover:text-white border border-slate-700 transition-colors shadow-sm"
+            className="text-cyan-300 hover:text-white"
           >
             <Minus className="w-4 h-4" />
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="secondary"
+            size="icon-sm"
             onClick={handleFitMoon}
             title="Fit Moon / Reset Zoom [Keyboard: 0]"
-            className="p-1.5 rounded-lg bg-space-850 hover:bg-space-750 text-slate-400 hover:text-white text-[10px] transition-colors border border-slate-800 mt-0.5"
+            className="mt-0.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+          </Button>
         </div>
 
-        {/* Camera Quick Presets (Bottom Left of 3D Viewport) */}
-        <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-2 bg-space-900/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/70 text-xs">
-          <button
+        {/* Camera Quick Presets (Bottom Left of 3D Viewport) using shadcn Button */}
+        <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-1.5 bg-space-900/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/70 text-xs">
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={flyToSouthPole}
-            className="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-space-700 border border-slate-700 text-slate-200 text-[11px] font-mono transition-colors"
+            className="font-mono"
           >
             South Pole (85°-90°S)
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="cyanPill"
+            size="xs"
             onClick={flyToSiteA}
-            className="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-space-700 border border-slate-700 text-cyan-300 text-[11px] font-mono transition-colors"
+            className="font-mono"
           >
             Site A Zoom
-          </button>
+          </Button>
           {siteB && (
-            <button
+            <Button
+              variant="amberPill"
+              size="xs"
               onClick={flyToSiteB}
-              className="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-space-700 border border-slate-700 text-amber-300 text-[11px] font-mono transition-colors"
+              className="font-mono"
             >
               Site B Zoom
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="secondary"
+            size="xs"
             onClick={flyToOrbitalVista}
-            className="px-2.5 py-1 rounded-lg bg-space-800 hover:bg-space-700 border border-slate-700 text-slate-200 text-[11px] font-mono transition-colors"
+            className="font-mono"
           >
             Orbital Vista
-          </button>
+          </Button>
 
           <div className="h-4 w-px bg-slate-700 mx-1" />
 
           {/* Toggle Sightlines & Trajectories */}
-          <button
+          <Button
+            variant={showSightlines ? 'cyanPill' : 'ghost'}
+            size="xs"
             onClick={() => setShowSightlines(!showSightlines)}
-            className={`px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${
-              showSightlines
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="font-mono"
           >
             Laser Rays
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={showSunOrbit ? 'amberPill' : 'ghost'}
+            size="xs"
             onClick={() => setShowSunOrbit(!showSunOrbit)}
-            className={`px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${
-              showSunOrbit
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="font-mono"
           >
             Sun Orbit
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={showEarthOrbit ? 'cyanPill' : 'ghost'}
+            size="xs"
             onClick={() => setShowEarthOrbit(!showEarthOrbit)}
-            className={`px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${
-              showEarthOrbit
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="font-mono"
           >
             Earth Libration
-          </button>
+          </Button>
         </div>
 
         {/* 3D Legend & Scientific Layer Indicator (Bottom Right of Viewport) */}
@@ -778,14 +787,14 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             Cesium Earth Model
           </span>
           {scientificLayer !== 'none' && (
-            <span className="flex items-center gap-1.5 text-emerald-400 font-bold border-l border-slate-700 pl-3">
+            <Badge variant="optimal" className="gap-1 border-l border-slate-700 pl-2">
               <Sparkles className="w-3.5 h-3.5" />
               {scientificLayer === 'volatiles'
                 ? 'LEND Volatiles / Ice'
                 : scientificLayer === 'thermal'
                 ? 'Diviner Rock Hazard'
                 : 'Shadow Density'}
-            </span>
+            </Badge>
           )}
         </div>
       </div>

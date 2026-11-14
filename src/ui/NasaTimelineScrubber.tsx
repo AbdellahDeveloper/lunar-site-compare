@@ -5,12 +5,8 @@ import {
   Pause,
   RotateCcw,
   Clock,
-  ChevronLeft,
-  ChevronRight,
-  Sun,
-  Radio,
-  Zap,
 } from 'lucide-react';
+import { Button, Slider } from '@/components/ui';
 
 interface NasaTimelineScrubberProps {
   currentScrubMs: number;
@@ -35,8 +31,6 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
   isPlaying,
   playbackSpeed,
   sunIntervalsA,
-  earthIntervalsA,
-  bothUpIntervalsA,
   onTogglePlay,
   onSetSpeed,
   onScrub,
@@ -88,82 +82,85 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
         />
       </div>
 
-      {/* Primary Fluid Time Slider */}
-      <div className="relative w-full flex items-center group">
-        <input
-          type="range"
-          min={windowStartMs}
-          max={windowEndMs}
-          step={15 * 60 * 1000} // 15 minute step resolution
-          value={currentScrubMs}
-          onChange={(e) => onScrub(Number(e.target.value))}
-          className="w-full h-2 bg-space-850 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
-        />
-      </div>
+      {/* Primary Fluid Time Slider using shadcn Slider */}
+      <Slider
+        min={windowStartMs}
+        max={windowEndMs}
+        step={15 * 60 * 1000} // 15 minute step resolution
+        value={currentScrubMs}
+        onValueChange={onScrub}
+      />
 
       {/* Controls & Direct UTC Timestamp Entry Row */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         {/* Playback Controls & Steps */}
-        <div className="flex items-center gap-2">
-          <button
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon-sm"
             onClick={onResetToStart}
             title="Reset to Epoch Start"
-            className="p-2 rounded-lg bg-space-900 hover:bg-space-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onStepTime(-24)}
             title="Step -24h"
-            className="px-2 py-1.5 rounded-lg bg-space-900 hover:bg-space-800 border border-slate-700 text-slate-300 font-mono text-[11px] transition-colors"
+            className="font-mono text-[11px] px-2"
           >
             -1d
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onStepTime(-1)}
             title="Step -1h"
-            className="px-2 py-1.5 rounded-lg bg-space-900 hover:bg-space-800 border border-slate-700 text-slate-300 font-mono text-[11px] transition-colors"
+            className="font-mono text-[11px] px-2"
           >
             -1h
-          </button>
+          </Button>
 
           {/* Primary Play/Pause Button */}
-          <button
+          <Button
+            variant={isPlaying ? 'solar' : 'nasa'}
+            size="sm"
             onClick={onTogglePlay}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg font-bold text-xs transition-all shadow-lg ${
-              isPlaying
-                ? 'bg-amber-400 hover:bg-amber-300 text-black shadow-amber-500/20'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-black shadow-cyan-500/20'
-            }`}
+            className="gap-1.5 px-3.5 font-bold"
           >
             {isPlaying ? (
               <>
-                <Pause className="w-4 h-4 fill-black" />
+                <Pause className="w-3.5 h-3.5 fill-black" />
                 <span>PAUSE</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-black" />
+                <Play className="w-3.5 h-3.5 fill-black" />
                 <span>SIMULATE</span>
               </>
             )}
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onStepTime(1)}
             title="Step +1h"
-            className="px-2 py-1.5 rounded-lg bg-space-900 hover:bg-space-800 border border-slate-700 text-slate-300 font-mono text-[11px] transition-colors"
+            className="font-mono text-[11px] px-2"
           >
             +1h
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => onStepTime(24)}
             title="Step +24h"
-            className="px-2 py-1.5 rounded-lg bg-space-900 hover:bg-space-800 border border-slate-700 text-slate-300 font-mono text-[11px] transition-colors"
+            className="font-mono text-[11px] px-2"
           >
             +1d
-          </button>
+          </Button>
         </div>
 
         {/* Center: Direct Timestamp Text Entry */}
@@ -179,33 +176,32 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
             className="bg-transparent text-slate-100 font-bold tracking-wide w-48 text-xs focus:outline-none"
           />
           <span className="text-[10px] text-slate-500">UTC</span>
-          <button
+          <Button
             type="submit"
-            className="px-2 py-0.5 rounded bg-space-800 hover:bg-space-700 text-[10px] text-cyan-300 transition-colors"
+            size="xs"
+            variant="secondary"
+            className="text-[10px] text-cyan-300 font-bold"
           >
             Jump
-          </button>
+          </Button>
         </form>
 
         {/* Right: Speed Multiplier */}
         <div className="flex items-center gap-1.5">
           <span className="text-slate-500 text-[11px] font-mono mr-1">Speed:</span>
           {speedOptions.map((spd) => (
-            <button
+            <Button
               key={spd}
+              size="xs"
+              variant={playbackSpeed === spd ? 'cyanPill' : 'secondary'}
               onClick={() => onSetSpeed(spd)}
-              className={`px-2 py-1 rounded-md text-[11px] font-mono transition-colors ${
-                playbackSpeed === spd
-                  ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-bold'
-                  : 'bg-space-900 border border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
+              className="font-mono"
             >
               {spd}x
-            </button>
+            </Button>
           ))}
         </div>
       </div>
     </div>
   );
 };
-

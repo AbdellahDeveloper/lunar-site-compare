@@ -17,13 +17,12 @@ import {
   Radio,
   Clock,
   ShieldCheck,
-  TrendingUp,
   Award,
   Sparkles,
   FileDown,
-  BarChart2,
   Calendar,
 } from 'lucide-react';
+import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 
 interface RightTelemetryPanelProps {
   uiMode: UIMode;
@@ -73,16 +72,16 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     return `${hours}h ${mins}m`;
   };
 
-  const getVerdictBadge = (tier: string) => {
+  const getVerdictVariant = (tier: string) => {
     switch (tier) {
       case 'optimal':
-        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50';
+        return 'optimal';
       case 'viable':
-        return 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50';
+        return 'viable';
       case 'constrained':
-        return 'bg-amber-500/20 text-amber-300 border-amber-500/50';
+        return 'constrained';
       default:
-        return 'bg-red-500/20 text-red-300 border-red-500/50';
+        return 'critical';
     }
   };
 
@@ -93,12 +92,14 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
       } h-full bg-space-950/90 backdrop-blur-md border-l border-slate-800 shadow-2xl flex-col overflow-hidden`}
     >
       {/* Collapse/Expand Toggle Tab */}
-      <button
+      <Button
+        variant="secondary"
+        size="icon-sm"
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute top-3 -left-3 z-30 p-1 rounded-full bg-space-800 border border-slate-700 text-slate-300 hover:text-white shadow-lg transition-colors"
+        className="absolute top-3 -left-3 z-30 rounded-full border border-slate-700 shadow-lg"
       >
         {isCollapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-      </button>
+      </Button>
 
       {isCollapsed ? (
         <div className="flex flex-col items-center pt-8 gap-6 text-slate-500 font-mono text-[11px] tracking-widest uppercase">
@@ -116,18 +117,14 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                 Mission Feasibility Scorecard
               </h3>
             </div>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getVerdictBadge(
-                evaluationA.verdict.tier
-              )}`}
-            >
+            <Badge variant={getVerdictVariant(evaluationA.verdict.tier)}>
               {evaluationA.verdict.title}
-            </span>
+            </Badge>
           </div>
 
           {/* Real-time Countdowns */}
           <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-            <div className="p-2.5 rounded-xl bg-space-900 border border-slate-800 flex flex-col">
+            <Card className="p-2.5 bg-space-900 border-slate-800 flex flex-col">
               <span className="text-[10px] text-slate-500">
                 {evaluationA.metrics.currentSunStatus === 'up' ? 'SUNSET IN' : 'SUNRISE IN'}
               </span>
@@ -136,9 +133,9 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                   ? formatCountdown(evaluationA.metrics.timeToNextSunsetMs)
                   : formatCountdown(evaluationA.metrics.timeToNextSunriseMs)}
               </span>
-            </div>
+            </Card>
 
-            <div className="p-2.5 rounded-xl bg-space-900 border border-slate-800 flex flex-col">
+            <Card className="p-2.5 bg-space-900 border-slate-800 flex flex-col">
               <span className="text-[10px] text-slate-500">
                 {evaluationA.metrics.currentEarthStatus === 'up' ? 'EARTHSET IN' : 'EARTHRISE IN'}
               </span>
@@ -149,12 +146,12 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                     : formatCountdown(evaluationA.metrics.timeToNextEarthsetMs)
                   : formatCountdown(evaluationA.metrics.timeToNextEarthriseMs)}
               </span>
-            </div>
+            </Card>
           </div>
 
-          {/* Colorful Side-by-Side A/B Comparison Scorecard */}
+          {/* Colorful Side-by-Side A/B Comparison Scorecard using shadcn Card */}
           {evaluationB && (
-            <div className="p-3 rounded-xl bg-space-900/95 border border-slate-800 flex flex-col gap-2.5 text-xs font-mono">
+            <Card className="p-3 bg-space-900/95 border-slate-800 flex flex-col gap-2.5 text-xs font-mono">
               <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-800 text-slate-400 font-bold">
                 <span>METRIC</span>
                 <span className="text-cyan-300">SITE A</span>
@@ -216,76 +213,55 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                   {evaluationB.metrics.longestDarkHours.toFixed(1)}h
                 </span>
               </div>
-            </div>
+            </Card>
           )}
 
-          {/* Quick Action Buttons */}
+          {/* Quick Action Buttons using shadcn Button */}
           <div className="grid grid-cols-3 gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onOpenSlipTable}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-space-900 hover:bg-space-850 border border-amber-500/40 text-amber-300 text-[10px] font-mono transition-colors"
+              className="flex-col h-auto py-2 border-amber-500/40 text-amber-300 hover:bg-amber-500/10 font-mono text-[10px]"
             >
-              <Calendar className="w-4 h-4 mb-1" />
+              <Calendar className="w-4 h-4 mb-1 text-amber-400" />
               <span>Slip Analysis</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onOpenAlternatives}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-space-900 hover:bg-space-850 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono transition-colors"
+              className="flex-col h-auto py-2 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 font-mono text-[10px]"
             >
-              <Sparkles className="w-4 h-4 mb-1" />
+              <Sparkles className="w-4 h-4 mb-1 text-emerald-400" />
               <span>Alternatives</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onOpenExport}
-              className="flex flex-col items-center justify-center p-2 rounded-xl bg-space-900 hover:bg-space-850 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono transition-colors"
+              className="flex-col h-auto py-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-mono text-[10px]"
             >
-              <FileDown className="w-4 h-4 mb-1" />
+              <FileDown className="w-4 h-4 mb-1 text-cyan-400" />
               <span>Export CSV</span>
-            </button>
+            </Button>
           </div>
 
           {/* DETAILED VIEW SUB-PANELS (Visible in Detailed Flight Ops Mode) */}
           {uiMode === 'detailed' && (
             <div className="flex flex-col gap-3 pt-2 border-t border-slate-800">
-              {/* Detailed Sub-Tab Selector */}
-              <div className="flex items-center gap-1 p-1 bg-space-900 rounded-xl border border-slate-800 text-[11px] font-mono">
-                <button
-                  onClick={() => setDetailSubTab('panorama')}
-                  className={`flex-1 py-1 rounded-lg text-center transition-colors ${
-                    detailSubTab === 'panorama'
-                      ? 'bg-cyan-500 text-black font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Panorama
-                </button>
-                <button
-                  onClick={() => setDetailSubTab('skyplot')}
-                  className={`flex-1 py-1 rounded-lg text-center transition-colors ${
-                    detailSubTab === 'skyplot'
-                      ? 'bg-cyan-500 text-black font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Sky Plot
-                </button>
-                <button
-                  onClick={() => setDetailSubTab('montecarlo')}
-                  className={`flex-1 py-1 rounded-lg text-center transition-colors ${
-                    detailSubTab === 'montecarlo'
-                      ? 'bg-cyan-500 text-black font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Monte Carlo
-                </button>
-              </div>
+              {/* Detailed Sub-Tab Selector using shadcn Tabs */}
+              <Tabs value={detailSubTab} onValueChange={(val) => setDetailSubTab(val as any)}>
+                <TabsList className="grid grid-cols-3 w-full">
+                  <TabsTrigger value="panorama">Panorama</TabsTrigger>
+                  <TabsTrigger value="skyplot">Sky Plot</TabsTrigger>
+                  <TabsTrigger value="montecarlo">Monte Carlo</TabsTrigger>
+                </TabsList>
 
-              {/* Sub-Tab 1: 360° Panorama */}
-              {detailSubTab === 'panorama' && (
-                <div className="flex flex-col gap-2">
+                {/* Sub-Tab 1: 360° Panorama */}
+                <TabsContent value="panorama">
                   <HorizonPanorama
                     currentPoint={currentPointA}
                     allPoints={allPointsA}
@@ -294,66 +270,64 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                     useTerrain={true}
                     elevKm={siteA.elevKm}
                   />
-                </div>
-              )}
+                </TabsContent>
 
-              {/* Sub-Tab 2: Polar Radar Skyplot */}
-              {detailSubTab === 'skyplot' && (
-                <div className="flex flex-col gap-2">
+                {/* Sub-Tab 2: Polar Radar Skyplot */}
+                <TabsContent value="skyplot">
                   <SkyPlot
                     currentPoint={currentPointA}
                     allPoints={allPointsA}
                     siteName={siteA.name}
                   />
-                </div>
-              )}
+                </TabsContent>
 
-              {/* Sub-Tab 3: Monte Carlo Risk Assessment */}
-              {detailSubTab === 'montecarlo' && (
-                <div className="p-3.5 rounded-xl bg-space-900/90 border border-slate-800 flex flex-col gap-3 text-xs font-mono">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">DISPERSION TRIALS</span>
-                    <span className="text-cyan-300 font-bold">{monteCarloA.trialsCount} Trials</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">SUNLIGHT CERTAINTY</span>
-                    <span className="text-solar-gold font-bold">{monteCarloA.successProbability}%</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">DTE LINK CERTAINTY</span>
-                    <span className="text-comm-cyan font-bold">{monteCarloA.dteProbability}%</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">WORST-CASE NIGHT</span>
-                    <span className="text-red-400 font-bold">{monteCarloA.maxConsecutiveDarkHours}h</span>
-                  </div>
-
-                  {/* Histogram */}
-                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase">Darkness Distribution</span>
-                    <div className="grid grid-cols-5 gap-1 text-[9px] text-center">
-                      {monteCarloA.darknessHistogram.map((bin) => (
-                        <div key={bin.binHours} className="flex flex-col items-center">
-                          <div className="w-full bg-space-800 h-12 rounded-t flex items-end justify-center p-0.5">
-                            <div
-                              className="w-full bg-purple-500 rounded-t"
-                              style={{ height: `${Math.max(4, (bin.count / monteCarloA.trialsCount) * 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-slate-400 mt-1">{bin.binHours}</span>
-                        </div>
-                      ))}
+                {/* Sub-Tab 3: Monte Carlo Risk Assessment */}
+                <TabsContent value="montecarlo">
+                  <Card className="p-3.5 bg-space-900/90 border-slate-800 flex flex-col gap-3 text-xs font-mono">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">DISPERSION TRIALS</span>
+                      <span className="text-cyan-300 font-bold">{monteCarloA.trialsCount} Trials</span>
                     </div>
-                  </div>
 
-                  <p className="text-[11px] text-slate-300 leading-normal pt-1">
-                    {monteCarloA.recommendation}
-                  </p>
-                </div>
-              )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">SUNLIGHT CERTAINTY</span>
+                      <span className="text-solar-gold font-bold">{monteCarloA.successProbability}%</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">DTE LINK CERTAINTY</span>
+                      <span className="text-comm-cyan font-bold">{monteCarloA.dteProbability}%</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">WORST-CASE NIGHT</span>
+                      <span className="text-red-400 font-bold">{monteCarloA.maxConsecutiveDarkHours}h</span>
+                    </div>
+
+                    {/* Histogram */}
+                    <div className="flex flex-col gap-1 pt-2 border-t border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase">Darkness Distribution</span>
+                      <div className="grid grid-cols-5 gap-1 text-[9px] text-center">
+                        {monteCarloA.darknessHistogram.map((bin) => (
+                          <div key={bin.binHours} className="flex flex-col items-center">
+                            <div className="w-full bg-space-800 h-12 rounded-t flex items-end justify-center p-0.5">
+                              <div
+                                className="w-full bg-purple-500 rounded-t"
+                                style={{ height: `${Math.max(4, (bin.count / monteCarloA.trialsCount) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-slate-400 mt-1">{bin.binHours}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-slate-300 leading-normal pt-1">
+                      {monteCarloA.recommendation}
+                    </p>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
@@ -361,4 +335,3 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     </div>
   );
 };
-

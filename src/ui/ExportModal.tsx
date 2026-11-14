@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ScenarioEvaluation, ScenarioConfig, Site } from '../types';
 import { generateEphemerisCsv, generateIntervalsCsv, downloadTextFile } from '../engine/export';
-import { X, Download, Copy, Check, FileText } from 'lucide-react';
+import { Download, Copy, Check, FileText } from 'lucide-react';
+import { Button, Card, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
 
 interface ExportModalProps {
   scenario: ScenarioConfig;
@@ -63,94 +64,82 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-700 bg-space-900 shadow-2xl p-6 flex flex-col gap-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-base font-bold text-slate-100 uppercase tracking-wide">
-              Export Mission Data & Telemetry
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-space-850 hover:bg-space-700 text-slate-400 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <DialogContent onClose={onClose} className="max-w-lg">
+      <DialogHeader>
+        <div className="flex items-center gap-2">
+          <FileText className="w-5 h-5 text-cyan-400" />
+          <DialogTitle>Export Mission Data & Telemetry</DialogTitle>
         </div>
-
-        <div className="text-xs text-slate-300">
+        <DialogDescription>
           Export full high-precision ephemeris time-series, horizon clearances, and operational contact windows for <span className="text-cyan-300 font-semibold">{scenario.name}</span>.
-        </div>
+        </DialogDescription>
+      </DialogHeader>
 
-        <div className="flex flex-col gap-3">
-          {/* Download Ephemeris CSV */}
-          <button
-            onClick={handleDownloadEphemerisCsv}
-            className="flex items-center justify-between p-3.5 rounded-xl bg-space-850 hover:bg-space-800 border border-slate-700 transition-colors text-left group"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
-                Ephemeris Time-Series (CSV)
-              </span>
-              <span className="text-[11px] text-slate-400">
-                30-minute interval timestamps, Sun/Earth elevation, azimuth, clearances & power flux
-              </span>
-            </div>
-            <Download className="w-4 h-4 text-cyan-400" />
-          </button>
+      <div className="flex flex-col gap-3">
+        {/* Download Ephemeris CSV */}
+        <Card
+          onClick={handleDownloadEphemerisCsv}
+          className="p-3.5 bg-space-850 hover:bg-space-800 border-slate-700 transition-colors cursor-pointer group flex items-center justify-between"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
+              Ephemeris Time-Series (CSV)
+            </span>
+            <span className="text-[11px] text-slate-400">
+              30-minute interval timestamps, Sun/Earth elevation, azimuth, clearances & power flux
+            </span>
+          </div>
+          <Button variant="secondary" size="icon" className="group-hover:border-cyan-400 group-hover:text-cyan-300">
+            <Download className="w-4 h-4" />
+          </Button>
+        </Card>
 
-          {/* Download Intervals CSV */}
-          <button
-            onClick={handleDownloadIntervalsCsv}
-            className="flex items-center justify-between p-3.5 rounded-xl bg-space-850 hover:bg-space-800 border border-slate-700 transition-colors text-left group"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
-                Visibility Windows & Events (CSV)
-              </span>
-              <span className="text-[11px] text-slate-400">
-                Bisection-refined sunrise/sunset, earthrise/earthset & both-up contact windows
-              </span>
-            </div>
-            <Download className="w-4 h-4 text-cyan-400" />
-          </button>
+        {/* Download Contact Windows CSV */}
+        <Card
+          onClick={handleDownloadIntervalsCsv}
+          className="p-3.5 bg-space-850 hover:bg-space-800 border-slate-700 transition-colors cursor-pointer group flex items-center justify-between"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
+              Events & Contact Windows (CSV)
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Precise sunrise, sunset, Earthrise, Earthset, and simultaneous both-up intervals
+            </span>
+          </div>
+          <Button variant="secondary" size="icon" className="group-hover:border-cyan-400 group-hover:text-cyan-300">
+            <Download className="w-4 h-4" />
+          </Button>
+        </Card>
 
-          {/* Copy Summary */}
-          <button
-            onClick={handleCopySummary}
-            className="flex items-center justify-between p-3.5 rounded-xl bg-space-850 hover:bg-space-800 border border-slate-700 transition-colors text-left group"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-bold text-slate-100 group-hover:text-emerald-300 transition-colors">
-                Executive Mission Summary (Markdown)
-              </span>
-              <span className="text-[11px] text-slate-400">
-                Copy formatted markdown summary report to clipboard
-              </span>
-            </div>
+        {/* Copy Markdown Executive Summary */}
+        <Card
+          onClick={handleCopySummary}
+          className="p-3.5 bg-space-850 hover:bg-space-800 border-slate-700 transition-colors cursor-pointer group flex items-center justify-between"
+        >
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">
+              Executive Feasibility Brief (Markdown)
+            </span>
+            <span className="text-[11px] text-slate-400">
+              Copy a formatted report with verdict and metrics directly to clipboard
+            </span>
+          </div>
+          <Button variant="secondary" size="icon" className="group-hover:border-cyan-400 group-hover:text-cyan-300">
             {copied ? (
-              <span className="flex items-center gap-1 text-emerald-400 text-xs font-bold">
-                <Check className="w-4 h-4" />
-                <span>Copied</span>
-              </span>
+              <Check className="w-4 h-4 text-emerald-400" />
             ) : (
-              <Copy className="w-4 h-4 text-emerald-400" />
+              <Copy className="w-4 h-4" />
             )}
-          </button>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-space-800 hover:bg-space-700 text-slate-300 text-xs transition-colors"
-          >
-            Close
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
-    </div>
+
+      <div className="flex justify-end pt-2 border-t border-slate-800">
+        <Button variant="outline" size="sm" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </DialogContent>
   );
 };
-

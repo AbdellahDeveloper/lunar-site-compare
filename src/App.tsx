@@ -29,7 +29,7 @@ import { AlternativesModal } from './ui/AlternativesModal';
 import { MapPicker2D } from './ui/MapPicker2D';
 import { LearnTourModal } from './ui/LearnTourModal';
 import { ExportModal } from './ui/ExportModal';
-import { X } from 'lucide-react';
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
 
 export const App: React.FC = () => {
   // UI & View Mode: starts in Simple View with 3D-first central focus
@@ -429,34 +429,27 @@ export const App: React.FC = () => {
       )}
 
       {showMapPickerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-space-900 shadow-2xl p-6 flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h2 className="text-base font-bold text-slate-100 uppercase tracking-wide">
-                Pick Coordinates on Lunar Map for Location {mapTarget}
-              </h2>
-              <button
-                onClick={() => setShowMapPickerModal(false)}
-                className="p-1.5 rounded-lg bg-space-850 hover:bg-space-700 text-slate-400 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+        <DialogContent onClose={() => setShowMapPickerModal(false)} className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Pick Coordinates on Lunar Map for Location {mapTarget}</DialogTitle>
+            <DialogDescription>
+              Select an existing lunar exploration site or click anywhere on the lunar surface to designate custom coordinates.
+            </DialogDescription>
+          </DialogHeader>
 
-            <MapPicker2D
-              selectedSiteId={mapTarget === 'A' ? siteA.id : siteB.id}
-              currentLat={mapTarget === 'A' ? siteA.lat : siteB.lat}
-              currentLon={mapTarget === 'A' ? siteA.lon : siteB.lon}
-              onSelectSite={(site) => {
-                if (mapTarget === 'A') setSiteA(site);
-                else setSiteB(site);
-                setShowMapPickerModal(false);
-              }}
-              onSelectCoordinates={handleApplyMapCoords}
-              sites={LUNAR_SITES}
-            />
-          </div>
-        </div>
+          <MapPicker2D
+            selectedSiteId={mapTarget === 'A' ? siteA.id : siteB.id}
+            currentLat={mapTarget === 'A' ? siteA.lat : siteB.lat}
+            currentLon={mapTarget === 'A' ? siteA.lon : siteB.lon}
+            onSelectSite={(site) => {
+              if (mapTarget === 'A') setSiteA(site);
+              else setSiteB(site);
+              setShowMapPickerModal(false);
+            }}
+            onSelectCoordinates={handleApplyMapCoords}
+            sites={LUNAR_SITES}
+          />
+        </DialogContent>
       )}
 
       {showLearnTourModal && (

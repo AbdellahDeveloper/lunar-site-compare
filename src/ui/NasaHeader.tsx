@@ -5,19 +5,16 @@ import {
   UIMode,
 } from '../types';
 import {
-  Compass,
   Calendar,
-  Layers,
   Sparkles,
   Share2,
   Check,
   Split,
-  Maximize2,
   Sliders,
   BookOpen,
   Eye,
-  Clock,
 } from 'lucide-react';
+import { Button, Badge, Separator } from '@/components/ui';
 
 interface NasaHeaderProps {
   uiMode: UIMode;
@@ -72,9 +69,9 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
               <span className="font-extrabold tracking-tight text-sm text-slate-100 font-mono uppercase">
                 SELENE<span className="text-cyan-400">-COMPARE</span>
               </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-950/80 border border-blue-500/50 text-cyan-300 font-bold uppercase tracking-wider">
+              <Badge variant="viable">
                 CLPS & ARTEMIS
-              </span>
+              </Badge>
             </div>
             <div className="text-[10px] text-slate-400 font-mono">
               Lunar South Pole 3D Illumination & Communication Operations
@@ -82,103 +79,82 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
           </div>
         </div>
 
-        {/* View Mode Toggle: Simple vs Detailed */}
+        {/* View Mode Toggle: Simple vs Detailed using shadcn Button */}
         <div className="flex items-center gap-1 bg-space-900 p-1 rounded-xl border border-slate-700/70 text-xs">
-          <button
+          <Button
+            size="sm"
+            variant={uiMode === 'simple' ? 'nasa' : 'ghost'}
             onClick={() => onSetUIMode('simple')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              uiMode === 'simple'
-                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-black font-bold shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="gap-1.5"
           >
             <Eye className="w-3.5 h-3.5" />
             <span>Simple View</span>
-          </button>
+          </Button>
 
-          <button
+          <Button
+            size="sm"
+            variant={uiMode === 'detailed' ? 'solar' : 'ghost'}
             onClick={() => onSetUIMode('detailed')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-all ${
-              uiMode === 'detailed'
-                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black font-bold shadow-md shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="gap-1.5"
           >
             <Sliders className="w-3.5 h-3.5" />
             <span>Detailed View</span>
-          </button>
+          </Button>
         </div>
 
         {/* 3D Comparison Mode: Overlapped vs Split Screen */}
         <div className="flex items-center gap-1 bg-space-900 p-1 rounded-xl border border-slate-700/70 text-xs font-mono">
           <span className="text-slate-500 text-[10px] px-2 uppercase">3D Compare:</span>
-          <button
+          <Button
+            size="sm"
+            variant={viewMode === 'overlapped' ? 'cyanPill' : 'ghost'}
             onClick={() => onSetViewMode('overlapped')}
-            className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-              viewMode === 'overlapped'
-                ? 'bg-space-700 text-cyan-300 border border-cyan-500/50'
-                : 'text-slate-400 hover:text-white'
-            }`}
           >
-            Overlapped View
-          </button>
+            Overlapped
+          </Button>
 
-          <button
+          <Button
+            size="sm"
+            variant={viewMode === 'split' ? 'amberPill' : 'ghost'}
             onClick={() => onSetViewMode('split')}
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
-              viewMode === 'split'
-                ? 'bg-space-700 text-amber-300 border border-amber-500/50'
-                : 'text-slate-400 hover:text-white'
-            }`}
+            className="gap-1"
           >
             <Split className="w-3 h-3" />
-            <span>Split Screen (Dual Moons)</span>
-          </button>
+            <span>Split Screen</span>
+          </Button>
         </div>
 
         {/* Scientific Exploration Layer Toggles */}
         <div className="hidden lg:flex items-center gap-1 bg-space-900 p-1 rounded-xl border border-slate-700/70 text-xs font-mono">
           <span className="text-slate-500 text-[10px] px-2 uppercase">Layer:</span>
-          <button
+          <Button
+            size="xs"
+            variant={scientificLayer === 'none' ? 'secondary' : 'ghost'}
             onClick={() => onSetScientificLayer('none')}
-            className={`px-2 py-1 rounded-md text-[10px] transition-colors ${
-              scientificLayer === 'none'
-                ? 'bg-space-800 text-slate-100 font-bold border border-slate-600'
-                : 'text-slate-400 hover:text-white'
-            }`}
           >
             Regolith
-          </button>
-          <button
+          </Button>
+          <Button
+            size="xs"
+            variant={scientificLayer === 'volatiles' ? 'emeraldPill' : 'ghost'}
             onClick={() => onSetScientificLayer('volatiles')}
-            className={`px-2 py-1 rounded-md text-[10px] transition-colors ${
-              scientificLayer === 'volatiles'
-                ? 'bg-teal-950 text-teal-300 border border-teal-500/60 font-bold'
-                : 'text-slate-400 hover:text-teal-300'
-            }`}
           >
-            🧊 Volatiles / Ice
-          </button>
-          <button
+            🧊 Volatiles
+          </Button>
+          <Button
+            size="xs"
+            variant={scientificLayer === 'thermal' ? 'amberPill' : 'ghost'}
             onClick={() => onSetScientificLayer('thermal')}
-            className={`px-2 py-1 rounded-md text-[10px] transition-colors ${
-              scientificLayer === 'thermal'
-                ? 'bg-pink-950 text-pink-300 border border-pink-500/60 font-bold'
-                : 'text-slate-400 hover:text-pink-300'
-            }`}
           >
             🪨 Rock Hazard
-          </button>
-          <button
+          </Button>
+          <Button
+            size="xs"
+            variant={scientificLayer === 'shadow' ? 'cyanPill' : 'ghost'}
             onClick={() => onSetScientificLayer('shadow')}
-            className={`px-2 py-1 rounded-md text-[10px] transition-colors ${
-              scientificLayer === 'shadow'
-                ? 'bg-amber-950 text-amber-300 border border-amber-500/60 font-bold'
-                : 'text-slate-400 hover:text-amber-300'
-            }`}
           >
-            🌑 Shadow Density
-          </button>
+            🌑 Shadow
+          </Button>
         </div>
 
         {/* Global Time Window & Actions */}
@@ -192,7 +168,7 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
               onChange={(e) => onSetStartDate(e.target.value)}
               className="bg-transparent text-slate-200 text-xs focus:outline-none cursor-pointer"
             />
-            <span className="text-slate-600">|</span>
+            <Separator orientation="vertical" className="h-4 bg-slate-700" />
             <select
               value={windowDays}
               onChange={(e) => onSetWindowDays(Number(e.target.value))}
@@ -206,31 +182,33 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
             </select>
           </div>
 
-          {/* Learn Tour Button */}
-          <button
+          {/* Learn Tour Guide Button */}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onOpenLearnTour}
             title="Science & Engineering Guide"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-space-850 hover:bg-space-800 border border-slate-700 text-slate-300 hover:text-white text-xs transition-colors"
+            className="gap-1.5"
           >
             <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
             <span className="hidden sm:inline">Guide</span>
-          </button>
+          </Button>
 
           {/* Share Button */}
-          <button
+          <Button
+            variant="outline"
+            size="icon"
             onClick={handleShare}
             title="Share Mission Configuration Link"
-            className="p-1.5 rounded-lg bg-space-850 hover:bg-space-800 border border-slate-700 text-slate-300 hover:text-white transition-colors"
           >
             {copiedShare ? (
               <Check className="w-4 h-4 text-emerald-400" />
             ) : (
               <Share2 className="w-4 h-4 text-cyan-400" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </header>
   );
 };
-

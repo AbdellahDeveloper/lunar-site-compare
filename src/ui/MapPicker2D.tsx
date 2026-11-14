@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Site } from '../types';
+import { Button } from '@/components/ui';
 
 interface MapPicker2DProps {
   selectedSiteId: string;
@@ -350,26 +351,20 @@ export const MapPicker2D: React.FC<MapPicker2DProps> = ({
           <span className="text-xs text-slate-400">Click anywhere to place lander</span>
         </div>
         <div className="flex items-center gap-1 bg-space-850 p-0.5 rounded-lg border border-slate-700">
-          <button
+          <Button
+            variant={projection === 'polar' ? 'nasa' : 'ghost'}
+            size="xs"
             onClick={() => setProjection('polar')}
-            className={`px-2.5 py-1 rounded text-xs transition-colors ${
-              projection === 'polar'
-                ? 'bg-cyan-500 text-black font-semibold'
-                : 'text-slate-400 hover:text-white'
-            }`}
           >
             South Pole (80°S-90°S)
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={projection === 'global' ? 'nasa' : 'ghost'}
+            size="xs"
             onClick={() => setProjection('global')}
-            className={`px-2.5 py-1 rounded text-xs transition-colors ${
-              projection === 'global'
-                ? 'bg-cyan-500 text-black font-semibold'
-                : 'text-slate-400 hover:text-white'
-            }`}
           >
             Global Equirectangular
-          </button>
+          </Button>
         </div>
       </div>
 
