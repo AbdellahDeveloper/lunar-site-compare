@@ -116,8 +116,10 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
 
-  // Auto-Spin Turntable state (Fast 3D Moon rotation)
-  const [autoSpin, setAutoSpin] = useState<boolean>(true);
+  // Auto-Spin Turntable state (3D Moon rotation)
+  const [autoSpin, setAutoSpin] = useState<boolean>(false);
+  const isInteractingRef = useRef<boolean>(false);
+  const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [spinSpeedIndex, setSpinSpeedIndex] = useState<number>(1); // 0 = 1x (~15°/s), 1 = 2x (~32°/s), 2 = 4x (~65°/s)
   const spinSpeeds = [0.25, 0.55, 1.15];
 
@@ -158,10 +160,123 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#242b38');
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#05070d');
 
-    // Configure screen space camera controller for smooth & extreme zoom
-    viewer.scene.screenSpaceCameraController.enableZoom = true;
-    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 1500.0; // 1.5 km above surface (crater rim)
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 45000000.0; // 45,000 km (deep space orbital view)
+    // Configure screen space camera controller for smooth & responsive navigation
+    const ssc = viewer.scene.screenSpaceCameraController;
+    ssc.enableZoom = true;
+    ssc.enableRotate = true;
+    ssc.enableTilt = true;
+    ssc.enableTranslate = false;
+    ssc.minimumZoomDistance = 400.0; // 400 meters above surface
+    ssc.maximumZoomDistance = 50000000.0; // 50,000 km deep space
+    ssc.zoomFactor = 8.0;
+    ssc.inertiaZoom = 0.5;
+    ssc.inertiaSpin = 0.5;
+
+    // Use Cesium native handlers for Right-Drag zoom and Touch Pinch
+    ssc.zoomEventTypes = [
+      Cesium.CameraEventType.RIGHT_DRAG,
+      Cesium.CameraEventType.PINCH,
+    ];
+
+    // Track user interaction to seamlessly yield turntable rotation
+    const canvas = viewer.canvas;
+    const notifyInteraction = () => {
+      isInteractingRef.current = true;
+      if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
+      interactionTimeoutRef.current = setTimeout(() => {
+        isInteractingRef.current = false;
+      }, 3000);
+    };
+
+    // Universal cursor-centric mouse wheel / trackpad zoom (Google Earth / CAD standard)
+    const handleCanvasWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (viewer.isDestroyed()) return;
+
+      notifyInteraction();
+
+      const scene = viewer.scene;
+      const camera = scene.camera;
+      const rect = canvas.getBoundingClientRect();
+      const mousePos = new Cesium.Cartesian2(e.clientX - rect.left, e.clientY - rect.top);
+
+      // Normalize wheel delta across mice, trackpads, and operating systems
+      const rawDelta = e.deltaY;
+      const clampedDelta = Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), 100);
+      // factor < 1.0 zooms in, factor > 1.0 zooms out
+      const factor = Math.exp(clampedDelta * 0.0022);
+
+      // Raycast against Moon ellipsoid to find exact lunar terrain point under cursor
+      const ray = camera.getPickRay(mousePos);
+      let targetPoint: Cesium.Cartesian3 | undefined;
+      if (ray) {
+        const intersection = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.MOON);
+        if (intersection && intersection.start > 0) {
+          targetPoint = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
+        }
+      }
+
+      const currentHeight = camera.positionCartographic?.height || 1000000;
+
+      if (targetPoint && factor < 1.0) {
+        // Zooming IN directly toward the crater or surface feature under the cursor
+        const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
+        const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
+        if (currentHeight > 500) {
+          const moveDistance = distanceToTarget * (1.0 - factor);
+          Cesium.Cartesian3.normalize(toTarget, toTarget);
+          camera.move(toTarget, moveDistance);
+        }
+      } else {
+        // Zooming OUT, or zooming when cursor is in space around the Moon
+        if (factor < 1.0) {
+          if (currentHeight > 500) {
+            const moveAmount = Math.max(300, currentHeight * (1.0 - factor));
+            camera.zoomIn(moveAmount);
+          }
+        } else {
+          if (currentHeight < 50000000) {
+            const moveAmount = Math.max(600, currentHeight * (factor - 1.0));
+            camera.zoomOut(moveAmount);
+          }
+        }
+      }
+
+      scene.requestRender();
+    };
+
+    const handlePointerDown = () => {
+      notifyInteraction();
+    };
+
+    // Double-click to fly smoothly into clicked crater/location
+    const handleDoubleClick = (e: MouseEvent) => {
+      if (viewer.isDestroyed()) return;
+      notifyInteraction();
+      const rect = canvas.getBoundingClientRect();
+      const mousePos = new Cesium.Cartesian2(e.clientX - rect.left, e.clientY - rect.top);
+      const ray = viewer.camera.getPickRay(mousePos);
+      if (ray) {
+        const intersection = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.MOON);
+        if (intersection && intersection.start > 0) {
+          const target = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
+          const carto = Cesium.Cartographic.fromCartesian(target, Cesium.Ellipsoid.MOON);
+          viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromRadians(
+              carto.longitude,
+              carto.latitude,
+              Math.max(25000, (viewer.camera.positionCartographic?.height || 500000) * 0.35),
+              Cesium.Ellipsoid.MOON
+            ),
+            duration: 1.0,
+          });
+        }
+      }
+    };
+
+    canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('dblclick', handleDoubleClick);
 
     // Listen to camera movements to update altitude HUD
     viewer.camera.changed.addEventListener(() => {
@@ -576,7 +691,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       const dt = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
 
-      if (autoSpin) {
+      if (autoSpin && !isInteractingRef.current) {
         const radPerSec = spinSpeeds[spinSpeedIndex] || 0.55;
         const angle = radPerSec * dt;
         const rotMat = Cesium.Matrix3.fromRotationZ(angle);
@@ -830,44 +945,61 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
           </div>
         )}
 
-        {/* Floating NASA Zoom Controls Widget (Right Side of Viewport) using shadcn Button */}
-        <div className="absolute right-4 top-20 z-20 flex flex-col items-center bg-space-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-2xl gap-1.5 font-mono">
-          <Button
-            variant="default"
-            size="icon"
-            onClick={handleZoomIn}
-            title="Zoom In (+) [Keyboard: +]"
-            className="text-cyan-300 hover:text-white"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-
-          <div className="py-1 px-1.5 text-center flex flex-col items-center">
-            <span className="text-[9px] text-slate-500 uppercase">ALT</span>
-            <span className="text-[10px] font-bold text-slate-200">
+        {/* Floating NASA Camera HUD & Zoom Controls Widget (Right Side of Viewport) */}
+        <div className="absolute right-4 top-20 z-20 flex flex-col items-end gap-2 font-mono">
+          {/* Live Altitude Telemetry Badge */}
+          <div className="bg-space-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 shadow-xl flex flex-col items-end text-right">
+            <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider">
+              ALTITUDE
+            </span>
+            <span className="text-xs font-bold text-slate-100">
               {altitudeKm >= 1000 ? `${(altitudeKm / 1000).toFixed(1)}k` : altitudeKm} km
             </span>
           </div>
 
-          <Button
-            variant="default"
-            size="icon"
-            onClick={handleZoomOut}
-            title="Zoom Out (-) [Keyboard: -]"
-            className="text-cyan-300 hover:text-white"
-          >
-            <Minus className="w-4 h-4" />
-          </Button>
+          {/* Quick Zoom Buttons & Reset */}
+          <div className="flex flex-col items-center bg-space-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700/80 shadow-2xl gap-1">
+            <Button
+              variant="default"
+              size="icon"
+              onClick={handleZoomIn}
+              title="Zoom In (or scroll mouse wheel forward)"
+              className="text-cyan-300 hover:text-white h-8 w-8"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
 
-          <Button
-            variant="secondary"
-            size="icon-sm"
-            onClick={handleFitMoon}
-            title="Fit Moon / Reset Zoom [Keyboard: 0]"
-            className="mt-0.5"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </Button>
+            <Button
+              variant="default"
+              size="icon"
+              onClick={handleZoomOut}
+              title="Zoom Out (or scroll mouse wheel backward)"
+              className="text-cyan-300 hover:text-white h-8 w-8"
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+
+            <div className="h-px w-5 bg-slate-700/80 my-0.5" />
+
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={handleFitMoon}
+              title="Fit Moon / Reset Orbital Vista (Double-click any crater to zoom into it)"
+              className="h-7 w-7 text-slate-300 hover:text-cyan-300"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          {/* Mouse Navigation Quick Guide Pill */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-space-950/80 border border-slate-800 text-[10px] text-slate-400 shadow-md">
+            <span>Scroll Wheel: Zoom</span>
+            <span className="text-slate-600">•</span>
+            <span>Drag: Orbit</span>
+            <span className="text-slate-600">•</span>
+            <span>Dbl-Click: Focus</span>
+          </div>
         </div>
 
         {/* Camera Quick Presets (Bottom Left of 3D Viewport) using shadcn Button */}
