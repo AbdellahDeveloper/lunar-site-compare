@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlternativeCandidate } from '../engine/alternatives';
-import { Sparkles, Calendar, MapPin, ArrowRight } from 'lucide-react';
+import { Sparkles, Calendar, MapPin, ArrowRight, Sun, Radio, Clock } from 'lucide-react';
 import { Button, Badge, Card, CardHeader, CardTitle, CardContent, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
 
 interface AlternativesModalProps {
@@ -97,17 +97,20 @@ export const AlternativesModal: React.FC<AlternativesModalProps> = ({
                 </p>
               </div>
 
-              {/* Metrics preview */}
+              {/* Metrics preview using icons */}
               <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-[11px] font-mono">
                 <div className="flex items-center gap-3">
-                  <span className="text-solar-gold font-bold">
-                    ☀ {cand.metrics.sunlightPercent.toFixed(0)}%
+                  <span className="text-solar-gold font-bold flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-solar-gold" />
+                    <span>{cand.metrics.sunlightPercent.toFixed(0)}%</span>
                   </span>
-                  <span className="text-comm-cyan font-bold">
-                    ☿ {cand.metrics.earthVisPercent.toFixed(0)}%
+                  <span className="text-comm-cyan font-bold flex items-center gap-1">
+                    <Radio className="w-3 h-3 text-comm-cyan" />
+                    <span>{cand.metrics.earthVisPercent.toFixed(0)}%</span>
                   </span>
-                  <span className="text-emerald-400 font-bold">
-                    ★ {cand.metrics.bothUpHours.toFixed(1)}h
+                  <span className="text-emerald-400 font-bold flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-emerald-400" />
+                    <span>{cand.metrics.bothUpHours.toFixed(1)}h</span>
                   </span>
                 </div>
 

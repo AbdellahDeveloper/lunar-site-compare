@@ -92,7 +92,12 @@ export const ComparisonSummary: React.FC<ComparisonSummaryProps> = ({
                     }`}
                   >
                     {ev?.metrics.sunlightHours.toFixed(1)}h ({ev?.metrics.sunlightPercent.toFixed(1)}%)
-                    {isWinner && <span className="ml-1.5 text-[10px] text-amber-400">★ BEST</span>}
+                    {isWinner && (
+                      <span className="inline-flex items-center gap-1 ml-1.5 text-[10px] text-amber-400">
+                        <Award className="w-3 h-3" />
+                        <span>BEST</span>
+                      </span>
+                    )}
                   </td>
                 );
               })}
@@ -115,7 +120,12 @@ export const ComparisonSummary: React.FC<ComparisonSummaryProps> = ({
                     }`}
                   >
                     {ev?.metrics.earthVisHours.toFixed(1)}h ({ev?.metrics.earthVisPercent.toFixed(1)}%)
-                    {isWinner && <span className="ml-1.5 text-[10px] text-cyan-400">★ BEST</span>}
+                    {isWinner && (
+                      <span className="inline-flex items-center gap-1 ml-1.5 text-[10px] text-cyan-400">
+                        <Award className="w-3 h-3" />
+                        <span>BEST</span>
+                      </span>
+                    )}
                   </td>
                 );
               })}
@@ -138,7 +148,12 @@ export const ComparisonSummary: React.FC<ComparisonSummaryProps> = ({
                     }`}
                   >
                     {ev?.metrics.bothUpHours.toFixed(1)}h ({ev?.metrics.bothUpPercent.toFixed(1)}%)
-                    {isWinner && <span className="ml-1.5 text-[10px] text-emerald-400">★ BEST</span>}
+                    {isWinner && (
+                      <span className="inline-flex items-center gap-1 ml-1.5 text-[10px] text-emerald-400">
+                        <Award className="w-3 h-3" />
+                        <span>BEST</span>
+                      </span>
+                    )}
                   </td>
                 );
               })}
@@ -161,7 +176,12 @@ export const ComparisonSummary: React.FC<ComparisonSummaryProps> = ({
                     }`}
                   >
                     {ev?.metrics.longestDarkHours.toFixed(1)}h
-                    {isSafest && <span className="ml-1.5 text-[10px] text-purple-400">★ SAFEST</span>}
+                    {isSafest && (
+                      <span className="inline-flex items-center gap-1 ml-1.5 text-[10px] text-purple-400">
+                        <ShieldCheck className="w-3 h-3" />
+                        <span>SAFEST</span>
+                      </span>
+                    )}
                   </td>
                 );
               })}

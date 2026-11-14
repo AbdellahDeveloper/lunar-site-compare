@@ -7,6 +7,8 @@ import {
   MapPin,
   ShieldAlert,
   Droplet,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Select } from '@/components/ui';
 
@@ -108,8 +110,18 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
           <div className="flex flex-col gap-1.5">
             <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wide flex items-center justify-between">
               <span>Select {activeSiteTab === 'A' ? 'Site A' : 'Site B'}</span>
-              <Badge variant={isCurrentActiveLit ? 'optimal' : 'destructive'}>
-                {isCurrentActiveLit ? '● Lit Now' : '○ In Shadow'}
+              <Badge variant={isCurrentActiveLit ? 'optimal' : 'destructive'} className="gap-1">
+                {isCurrentActiveLit ? (
+                  <>
+                    <Sun className="w-3 h-3 text-emerald-300" />
+                    <span>Lit Now</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3 h-3 text-red-300" />
+                    <span>In Shadow</span>
+                  </>
+                )}
               </Badge>
             </div>
 

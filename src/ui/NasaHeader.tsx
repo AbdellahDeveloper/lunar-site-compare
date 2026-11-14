@@ -13,6 +13,10 @@ import {
   Sliders,
   BookOpen,
   Eye,
+  Droplet,
+  ShieldAlert,
+  Moon,
+  Layers,
 } from 'lucide-react';
 import { Button, Badge, Separator } from '@/components/ui';
 
@@ -131,29 +135,37 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
             size="xs"
             variant={scientificLayer === 'none' ? 'secondary' : 'ghost'}
             onClick={() => onSetScientificLayer('none')}
+            className="gap-1"
           >
-            Regolith
+            <Layers className="w-3 h-3 text-slate-400" />
+            <span>Regolith</span>
           </Button>
           <Button
             size="xs"
             variant={scientificLayer === 'volatiles' ? 'emeraldPill' : 'ghost'}
             onClick={() => onSetScientificLayer('volatiles')}
+            className="gap-1"
           >
-            🧊 Volatiles
+            <Droplet className="w-3 h-3 text-teal-400" />
+            <span>Volatiles</span>
           </Button>
           <Button
             size="xs"
             variant={scientificLayer === 'thermal' ? 'amberPill' : 'ghost'}
             onClick={() => onSetScientificLayer('thermal')}
+            className="gap-1"
           >
-            🪨 Rock Hazard
+            <ShieldAlert className="w-3 h-3 text-pink-400" />
+            <span>Rock Hazard</span>
           </Button>
           <Button
             size="xs"
             variant={scientificLayer === 'shadow' ? 'cyanPill' : 'ghost'}
             onClick={() => onSetScientificLayer('shadow')}
+            className="gap-1"
           >
-            🌑 Shadow
+            <Moon className="w-3 h-3 text-amber-400" />
+            <span>Shadow</span>
           </Button>
         </div>
 

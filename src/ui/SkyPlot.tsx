@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { EphemerisPoint } from '../types';
+import { Sun, Radio } from 'lucide-react';
 
 interface SkyPlotProps {
   currentPoint: EphemerisPoint;
@@ -204,8 +205,14 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
           <span className="text-slate-400">({siteName})</span>
         </div>
         <div className="flex items-center gap-3 text-[11px] font-mono text-slate-400">
-          <span className="text-solar-gold">● Sun Trail</span>
-          <span className="text-comm-cyan">● Earth Libration</span>
+          <span className="text-solar-gold flex items-center gap-1">
+            <Sun className="w-3 h-3 text-solar-gold" />
+            <span>Sun Trail</span>
+          </span>
+          <span className="text-comm-cyan flex items-center gap-1">
+            <Radio className="w-3 h-3 text-comm-cyan" />
+            <span>Earth Libration</span>
+          </span>
         </div>
       </div>
 
