@@ -361,3 +361,4 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     </div>
   );
 };
+

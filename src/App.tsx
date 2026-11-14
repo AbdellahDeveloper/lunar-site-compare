@@ -20,7 +20,7 @@ import { computeSlipAnalysis } from './engine/slip';
 import { findAlternativeScenarios, AlternativeCandidate } from './engine/alternatives';
 import { runMonteCarloAssessment } from './engine/monteCarlo';
 import { NasaHeader } from './ui/NasaHeader';
-import { CentralLunarViewport3D } from './ui/CentralLunarViewport3D';
+import { CesiumLunarViewport } from './ui/CesiumLunarViewport';
 import { LeftControlPanel } from './ui/LeftControlPanel';
 import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
 import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
@@ -349,9 +349,9 @@ export const App: React.FC = () => {
           }}
         />
 
-        {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON) */}
+        {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
         <div className="flex-1 h-full relative">
-          <CentralLunarViewport3D
+          <CesiumLunarViewport
             viewMode={viewMode}
             scientificLayer={scientificLayer}
             siteA={siteA}
