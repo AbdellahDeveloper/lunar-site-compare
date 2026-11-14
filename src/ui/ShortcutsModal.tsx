@@ -10,6 +10,7 @@ import {
   Sun,
   Clock,
   Sparkles,
+  Orbit,
 } from 'lucide-react';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, Card, Badge, Button } from '@/components/ui';
 
@@ -99,6 +100,15 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ onClose }) => {
                 <span>Surface Focus</span>
               </span>
               <span className="text-purple-300 font-medium text-[11px]">Double-Click Crater</span>
+            </div>
+
+            {/* Focus Moon & Celestial System */}
+            <div className="flex items-center justify-between">
+              <span className="text-slate-300 flex items-center gap-1.5">
+                <Orbit className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Moon & System Focus</span>
+              </span>
+              <span className="text-cyan-300 font-medium text-[11px]">Click Orbit Button</span>
             </div>
           </div>
         </Card>

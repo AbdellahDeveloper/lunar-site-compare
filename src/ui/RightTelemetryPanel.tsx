@@ -30,6 +30,7 @@ import {
   Activity,
   Sun,
   Layers,
+  Orbit,
 } from 'lucide-react';
 import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui';
 
@@ -65,6 +66,7 @@ interface RightTelemetryPanelProps {
   onFlyToSiteA: () => void;
   onFlyToSiteB: () => void;
   onFlyToOrbitalVista: () => void;
+  onFlyToMoonSystemFocus?: () => void;
   onFitMoon: () => void;
 }
 
@@ -98,6 +100,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   onFlyToSiteA,
   onFlyToSiteB,
   onFlyToOrbitalVista,
+  onFlyToMoonSystemFocus,
   onFitMoon,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -493,6 +496,16 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             </div>
 
             <div className="flex flex-col gap-1.5">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={onFlyToMoonSystemFocus}
+                className="w-full justify-start gap-2 text-xs font-mono font-bold text-cyan-300 border border-cyan-500/40 bg-cyan-950/30 hover:bg-cyan-950/60 shadow-md"
+              >
+                <Orbit className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Focus Moon & Celestial System</span>
+              </Button>
+
               <Button
                 variant="secondary"
                 size="sm"

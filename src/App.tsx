@@ -402,6 +402,7 @@ export const App: React.FC = () => {
           onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
           onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
           onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
+          onFlyToMoonSystemFocus={() => cesiumViewportRef.current?.flyToMoonSystemFocus()}
           onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
         />
       </div>

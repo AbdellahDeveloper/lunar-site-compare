@@ -6,7 +6,7 @@ import {
   Site,
   Vector3D,
 } from '../types';
-import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle } from 'lucide-react';
+import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle, Orbit } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { ShortcutsModal } from './ShortcutsModal';
 
@@ -163,6 +163,7 @@ export interface CesiumViewportHandle {
   flyToSiteA: () => void;
   flyToSiteB: () => void;
   flyToOrbitalVista: () => void;
+  flyToMoonSystemFocus: () => void;
   handleFitMoon: () => void;
   handleZoomIn: () => void;
   handleZoomOut: () => void;
@@ -1385,6 +1386,82 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     });
   };
 
+  // Celestial System Focus: Frames Moon centrally with Sun and Earth companion points visible in deep space
+  const flyToMoonSystemFocus = () => {
+    const vA = viewerARef.current;
+    if (!vA || vA.isDestroyed()) return;
+
+    const sunPos = sunPosRef.current;
+    const earthPos = earthPosRef.current;
+
+    const sDir = Cesium.Cartesian3.normalize(sunPos, new Cesium.Cartesian3());
+    const eDir = Cesium.Cartesian3.normalize(earthPos, new Cesium.Cartesian3());
+
+    // Mid-vector between Sun and Earth
+    let midDir = Cesium.Cartesian3.add(sDir, eDir, new Cesium.Cartesian3());
+    if (Cesium.Cartesian3.magnitude(midDir) < 0.2) {
+      midDir = Cesium.Cartesian3.clone(sDir);
+    } else {
+      Cesium.Cartesian3.normalize(midDir, midDir);
+    }
+
+    // Normal to celestial orbital plane
+    let normVec = Cesium.Cartesian3.cross(sDir, eDir, new Cesium.Cartesian3());
+    if (Cesium.Cartesian3.magnitude(normVec) < 0.1) {
+      normVec = Cesium.Cartesian3.cross(midDir, Cesium.Cartesian3.UNIT_Z, new Cesium.Cartesian3());
+      if (Cesium.Cartesian3.magnitude(normVec) < 0.1) {
+        normVec = new Cesium.Cartesian3(0, 1, 0);
+      }
+    }
+    Cesium.Cartesian3.normalize(normVec, normVec);
+
+    // Place camera on opposite side of midDir with lateral offset and southern tilt toward landing sites
+    const camDir = new Cesium.Cartesian3(
+      -0.72 * midDir.x + 0.48 * normVec.x,
+      -0.72 * midDir.y + 0.48 * normVec.y,
+      -0.72 * midDir.z + 0.48 * normVec.z - 0.40
+    );
+    Cesium.Cartesian3.normalize(camDir, camDir);
+
+    // Camera distance of 6,600 km frames the Moon at ~48% vertical screen height
+    const camDistance = 6600000;
+    const destination = Cesium.Cartesian3.multiplyByScalar(camDir, camDistance, new Cesium.Cartesian3());
+    const lookTarget = new Cesium.Cartesian3(0, 0, -250000); // Focus toward Moon center / South Pole region
+
+    const direction = Cesium.Cartesian3.normalize(
+      Cesium.Cartesian3.subtract(lookTarget, destination, new Cesium.Cartesian3()),
+      new Cesium.Cartesian3()
+    );
+
+    // Camera up vector oriented with lunar spin axis
+    let up = Cesium.Cartesian3.cross(Cesium.Cartesian3.cross(direction, Cesium.Cartesian3.UNIT_Z, new Cesium.Cartesian3()), direction, new Cesium.Cartesian3());
+    if (Cesium.Cartesian3.magnitude(up) < 0.1) {
+      up = Cesium.Cartesian3.UNIT_Z;
+    } else {
+      Cesium.Cartesian3.normalize(up, up);
+    }
+
+    vA.camera.flyTo({
+      destination,
+      orientation: {
+        direction,
+        up,
+      },
+      duration: 1.8,
+    });
+
+    if (viewMode === 'split' && viewerBRef.current && !viewerBRef.current.isDestroyed()) {
+      viewerBRef.current.camera.flyTo({
+        destination,
+        orientation: {
+          direction,
+          up,
+        },
+        duration: 1.8,
+      });
+    }
+  };
+
   // Dedicated Zoom Controls
   const handleZoomIn = () => {
     const v = viewerARef.current;
@@ -1444,6 +1521,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     flyToSiteA,
     flyToSiteB,
     flyToOrbitalVista,
+    flyToMoonSystemFocus,
     handleFitMoon,
     handleZoomIn,
     handleZoomOut,
@@ -1510,6 +1588,16 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
             </Button>
 
             <div className="h-px w-5 bg-slate-700/80 my-0.5" />
+
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={flyToMoonSystemFocus}
+              title="Focus Moon & Celestial System (Moon in focus, Sun & Earth visible in cosmic background)"
+              className="h-7 w-7 text-cyan-300 hover:text-white hover:bg-space-800"
+            >
+              <Orbit className="w-3.5 h-3.5" />
+            </Button>
 
             <Button
               variant="secondary"
