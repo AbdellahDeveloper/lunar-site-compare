@@ -3,7 +3,6 @@ import * as THREE from 'three';
 import {
   ComparisonViewMode,
   EphemerisPoint,
-  ScientificLayer,
   Site,
   Vector3D,
 } from '../types';
@@ -11,7 +10,6 @@ import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles } from 'luci
 
 interface CentralLunarViewport3DProps {
   viewMode: ComparisonViewMode;
-  scientificLayer: ScientificLayer;
   siteA: Site;
   siteB?: Site;
   currentPointA: EphemerisPoint;
@@ -25,7 +23,6 @@ interface CentralLunarViewport3DProps {
 
 export const CentralLunarViewport3D: React.FC<CentralLunarViewport3DProps> = ({
   viewMode,
-  scientificLayer,
   siteA,
   siteB,
   currentPointA,
@@ -93,46 +90,10 @@ export const CentralLunarViewport3D: React.FC<CentralLunarViewport3DProps> = ({
       ctx.stroke();
     }
 
-    // Scientific Overlays
-    if (scientificLayer === 'volatiles') {
-      // Electric Teal / Ice Blue overlay on polar cold traps (PSRs)
-      const grad = ctx.createLinearGradient(0, 380, 0, 512);
-      grad.addColorStop(0, 'rgba(45, 212, 191, 0)');
-      grad.addColorStop(0.6, 'rgba(45, 212, 191, 0.45)');
-      grad.addColorStop(1, 'rgba(56, 189, 248, 0.85)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 380, 1024, 132);
-
-      // Shackleton & Haworth PSR ice pockets
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.arc(512, 490, 20, 0, Math.PI * 2);
-      ctx.arc(480, 475, 28, 0, Math.PI * 2);
-      ctx.arc(560, 480, 24, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (scientificLayer === 'thermal') {
-      // Diviner Rock Abundance & Thermal Inertia (Cool Indigo -> Warm Magenta/Orange)
-      const grad = ctx.createLinearGradient(0, 0, 1024, 512);
-      grad.addColorStop(0, 'rgba(99, 102, 241, 0.25)');
-      grad.addColorStop(0.5, 'rgba(236, 72, 153, 0.4)');
-      grad.addColorStop(1, 'rgba(249, 115, 22, 0.55)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 1024, 512);
-    } else if (scientificLayer === 'shadow') {
-      // Cumulative Shadow Density (Obsidian in PSRs, Gold on peaks)
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.6)';
-      ctx.fillRect(0, 420, 1024, 92);
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(512, 488, 6, 0, Math.PI * 2);
-      ctx.arc(430, 465, 8, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.needsUpdate = true;
     return tex;
-  }, [scientificLayer]);
+  }, []);
 
   // Three.js Scene Setup Helper
   const setupThreeScene = (
@@ -533,16 +494,6 @@ export const CentralLunarViewport3D: React.FC<CentralLunarViewport3DProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400/50" />
             Earth Model
           </span>
-          {scientificLayer !== 'none' && (
-            <span className="flex items-center gap-1.5 text-emerald-400 font-bold border-l border-slate-700 pl-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              {scientificLayer === 'volatiles'
-                ? 'LEND Volatiles / Ice'
-                : scientificLayer === 'thermal'
-                ? 'Diviner Rock Hazard'
-                : 'Shadow Density'}
-            </span>
-          )}
         </div>
       </div>
     </div>

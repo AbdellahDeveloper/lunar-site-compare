@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Site, ScientificLayer, EphemerisPoint } from '../types';
+import { Site, EphemerisPoint } from '../types';
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,8 +24,6 @@ interface LeftControlPanelProps {
   allSites: Site[];
   isSiteALit: boolean;
   isSiteBLit: boolean;
-  scientificLayer: ScientificLayer;
-  onSetScientificLayer: (layer: ScientificLayer) => void;
   onOpenMapPicker: () => void;
 }
 

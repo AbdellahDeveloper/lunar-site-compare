@@ -3,7 +3,6 @@ import {
   ComparisonViewMode,
   EphemerisPoint,
   HorizonMask,
-  ScientificLayer,
   ScenarioConfig,
   ScenarioEvaluation,
   Site,
@@ -35,7 +34,6 @@ export const App: React.FC = () => {
   // UI & View Mode: starts in Simple View with 3D-first central focus
   const [uiMode, setUIMode] = useState<UIMode>('simple');
   const [viewMode, setViewMode] = useState<ComparisonViewMode>('overlapped');
-  const [scientificLayer, setScientificLayer] = useState<ScientificLayer>('none');
 
   // Epoch & Window
   const [startDateIso, setStartDateIso] = useState('2026-11-20');
@@ -88,15 +86,11 @@ export const App: React.FC = () => {
         const sB = params.get('sB');
         const m = params.get('mode');
         const vm = params.get('view');
-        const layer = params.get('layer');
 
         if (epoch) setStartDateIso(epoch);
         if (days) setWindowDays(Number(days));
         if (m === 'simple' || m === 'detailed') setUIMode(m);
         if (vm === 'overlapped' || vm === 'split') setViewMode(vm);
-        if (layer === 'none' || layer === 'volatiles' || layer === 'thermal' || layer === 'shadow') {
-          setScientificLayer(layer);
-        }
 
         if (sA) {
           const matchA = LUNAR_SITES.find((s) => s.id === sA);
@@ -118,7 +112,6 @@ export const App: React.FC = () => {
     params.set('days', windowDays.toString());
     params.set('mode', uiMode);
     params.set('view', viewMode);
-    params.set('layer', scientificLayer);
     params.set('sA', siteA.id);
     params.set('sB', siteB.id);
     const url = `${window.location.origin}${window.location.pathname}#${params.toString()}`;
@@ -321,8 +314,6 @@ export const App: React.FC = () => {
         onSetUIMode={setUIMode}
         viewMode={viewMode}
         onSetViewMode={setViewMode}
-        scientificLayer={scientificLayer}
-        onSetScientificLayer={setScientificLayer}
         startDateIso={startDateIso}
         onSetStartDate={setStartDateIso}
         windowDays={windowDays}
@@ -344,8 +335,6 @@ export const App: React.FC = () => {
           allSites={LUNAR_SITES}
           isSiteALit={currentPointA.sun.isVisible}
           isSiteBLit={currentPointB.sun.isVisible}
-          scientificLayer={scientificLayer}
-          onSetScientificLayer={setScientificLayer}
           onOpenMapPicker={() => {
             setMapTarget('A');
             setShowMapPickerModal(true);
@@ -356,7 +345,6 @@ export const App: React.FC = () => {
         <div className="flex-1 h-full relative">
           <CesiumLunarViewport
             viewMode={viewMode}
-            scientificLayer={scientificLayer}
             siteA={siteA}
             siteB={siteB}
             currentPointA={currentPointA}
@@ -389,16 +377,19 @@ export const App: React.FC = () => {
         />
       </div>
 
-      {/* Unified NASA Bottom Dock (Fluid Scrubber + UTC Input + Mini Gantt Tracks) */}
+      {/* Unified NASA Bottom Dock (Fluid Scrubber + UTC Input + Dual-Location Stacked Gantt Tracks) */}
       <NasaTimelineScrubber
         currentScrubMs={currentScrubMs}
         windowStartMs={windowStartMs}
         windowEndMs={windowEndMs}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
+        siteA={siteA}
+        siteB={siteB}
         sunIntervalsA={evaluationA.sunIntervals}
         earthIntervalsA={evaluationA.earthIntervals}
-        bothUpIntervalsA={evaluationA.bothUpIntervals}
+        sunIntervalsB={evaluationB?.sunIntervals}
+        earthIntervalsB={evaluationB?.earthIntervals}
         onTogglePlay={() => setIsPlaying((p) => !p)}
         onSetSpeed={setPlaybackSpeed}
         onScrub={setCurrentScrubMs}

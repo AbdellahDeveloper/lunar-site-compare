@@ -3,7 +3,6 @@ import * as Cesium from 'cesium';
 import {
   ComparisonViewMode,
   EphemerisPoint,
-  ScientificLayer,
   Site,
   Vector3D,
 } from '../types';
@@ -77,7 +76,6 @@ function createEarthCanvas(): HTMLCanvasElement {
 
 interface CesiumLunarViewportProps {
   viewMode: ComparisonViewMode;
-  scientificLayer: ScientificLayer;
   siteA: Site;
   siteB?: Site;
   currentPointA: EphemerisPoint;
@@ -91,7 +89,6 @@ interface CesiumLunarViewportProps {
 
 export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   viewMode,
-  scientificLayer,
   siteA,
   siteB,
   currentPointA,
@@ -842,49 +839,10 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       });
     }
 
-    // 7. Scientific Exploration Overlays (LRO LEND Volatiles / Diviner Rockiness / PSRs)
-    if (scientificLayer === 'volatiles') {
-      const psrs = [
-        { name: 'Shackleton PSR', lat: -89.78, lon: 129.5, rMeters: 10500 },
-        { name: 'Haworth PSR', lat: -87.4, lon: -5.1, rMeters: 25000 },
-        { name: 'Shoemaker PSR', lat: -88.1, lon: 45.0, rMeters: 24000 },
-        { name: 'Faustini PSR', lat: -87.3, lon: 77.0, rMeters: 19000 },
-      ];
-
-      for (const psr of psrs) {
-        viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(psr.lon, psr.lat, 0, moon),
-          ellipse: {
-            semiMinorAxis: psr.rMeters,
-            semiMajorAxis: psr.rMeters,
-            material: Cesium.Color.fromCssColorString('rgba(45, 212, 191, 0.65)'),
-            outline: true,
-            outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
-            outlineWidth: 2,
-          },
-        });
-      }
-    } else if (scientificLayer === 'thermal') {
-      const thermalZones = [
-        { lat: -84.9, lon: 12.9, rMeters: 35000, color: 'rgba(236, 72, 153, 0.55)' },
-        { lat: -85.2, lon: 35.8, rMeters: 28000, color: 'rgba(249, 115, 22, 0.55)' },
-      ];
-      for (const tz of thermalZones) {
-        viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(tz.lon, tz.lat, 0, moon),
-          ellipse: {
-            semiMinorAxis: tz.rMeters,
-            semiMajorAxis: tz.rMeters,
-            material: Cesium.Color.fromCssColorString(tz.color),
-          },
-        });
-      }
-    }
-
     viewer.scene.requestRender();
   };
 
-  // Re-build entities only when sites, layers, or trajectory toggles change
+  // Re-build entities only when sites or trajectory toggles change
   useEffect(() => {
     updateViewerEntities(viewerARef.current, siteA, siteB);
     if (viewMode === 'split') {
@@ -893,7 +851,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   }, [
     siteA,
     siteB,
-    scientificLayer,
     showSightlines,
     showSunOrbit,
     showEarthOrbit,
@@ -1220,16 +1177,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400/50" />
             Cesium Earth Model
           </span>
-          {scientificLayer !== 'none' && (
-            <Badge variant="optimal" className="gap-1 border-l border-slate-700 pl-2">
-              <Sparkles className="w-3.5 h-3.5" />
-              {scientificLayer === 'volatiles'
-                ? 'LEND Volatiles / Ice'
-                : scientificLayer === 'thermal'
-                ? 'Diviner Rock Hazard'
-                : 'Shadow Density'}
-            </Badge>
-          )}
         </div>
       </div>
     </div>
