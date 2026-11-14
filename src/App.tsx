@@ -19,7 +19,7 @@ import { computeSlipAnalysis } from './engine/slip';
 import { findAlternativeScenarios, AlternativeCandidate } from './engine/alternatives';
 import { runMonteCarloAssessment } from './engine/monteCarlo';
 import { NasaHeader } from './ui/NasaHeader';
-import { CesiumLunarViewport } from './ui/CesiumLunarViewport';
+import { CesiumLunarViewport, CesiumViewportHandle } from './ui/CesiumLunarViewport';
 import { LeftControlPanel } from './ui/LeftControlPanel';
 import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
 import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
@@ -58,6 +58,14 @@ export const App: React.FC = () => {
   const [siteB, setSiteB] = useState<Site>(
     LUNAR_SITES.find((s) => s.id === 'malapert-mountain') || LUNAR_SITES[1]
   );
+
+  // 3D Viewport Controls & Overlays State
+  const [showSightlines, setShowSightlines] = useState(true);
+  const [showSunOrbit, setShowSunOrbit] = useState(true);
+  const [showEarthOrbit, setShowEarthOrbit] = useState(true);
+  const [autoSpin, setAutoSpin] = useState(false);
+  const [spinSpeedIndex, setSpinSpeedIndex] = useState(1);
+  const cesiumViewportRef = useRef<CesiumViewportHandle | null>(null);
 
   // Modals
   const [showSlipModal, setShowSlipModal] = useState(false);
@@ -344,6 +352,7 @@ export const App: React.FC = () => {
         {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
         <div className="flex-1 h-full relative">
           <CesiumLunarViewport
+            ref={cesiumViewportRef}
             viewMode={viewMode}
             siteA={siteA}
             siteB={siteB}
@@ -354,6 +363,11 @@ export const App: React.FC = () => {
             sunVec={currentBodyVecs.sun}
             earthVec={currentBodyVecs.earth}
             currentTimeMs={currentScrubMs}
+            showSightlines={showSightlines}
+            showSunOrbit={showSunOrbit}
+            showEarthOrbit={showEarthOrbit}
+            autoSpin={autoSpin}
+            spinSpeedIndex={spinSpeedIndex}
           />
         </div>
 
@@ -374,6 +388,21 @@ export const App: React.FC = () => {
           onOpenSlipTable={() => setShowSlipModal(true)}
           onOpenAlternatives={() => setShowAlternativesModal(true)}
           onOpenExport={() => setShowExportModal(true)}
+          showSightlines={showSightlines}
+          onToggleSightlines={() => setShowSightlines((p) => !p)}
+          showSunOrbit={showSunOrbit}
+          onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
+          showEarthOrbit={showEarthOrbit}
+          onToggleEarthOrbit={() => setShowEarthOrbit((p) => !p)}
+          autoSpin={autoSpin}
+          onToggleAutoSpin={() => setAutoSpin((p) => !p)}
+          spinSpeedIndex={spinSpeedIndex}
+          onSetSpinSpeedIndex={setSpinSpeedIndex}
+          onFlyToSouthPole={() => cesiumViewportRef.current?.flyToSouthPole()}
+          onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
+          onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
+          onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
+          onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
         />
       </div>
 

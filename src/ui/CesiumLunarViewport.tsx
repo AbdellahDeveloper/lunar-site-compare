@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import * as Cesium from 'cesium';
 import {
   ComparisonViewMode,
@@ -74,7 +74,17 @@ function createEarthCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
-interface CesiumLunarViewportProps {
+export interface CesiumViewportHandle {
+  flyToSouthPole: () => void;
+  flyToSiteA: () => void;
+  flyToSiteB: () => void;
+  flyToOrbitalVista: () => void;
+  handleFitMoon: () => void;
+  handleZoomIn: () => void;
+  handleZoomOut: () => void;
+}
+
+export interface CesiumLunarViewportProps {
   viewMode: ComparisonViewMode;
   siteA: Site;
   siteB?: Site;
@@ -85,9 +95,14 @@ interface CesiumLunarViewportProps {
   sunVec: Vector3D;
   earthVec: Vector3D;
   currentTimeMs: number;
+  showSightlines: boolean;
+  showSunOrbit: boolean;
+  showEarthOrbit: boolean;
+  autoSpin: boolean;
+  spinSpeedIndex: number;
 }
 
-export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
+export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarViewportProps>(({
   viewMode,
   siteA,
   siteB,
@@ -98,26 +113,24 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   sunVec,
   earthVec,
   currentTimeMs,
-}) => {
+  showSightlines,
+  showSunOrbit,
+  showEarthOrbit,
+  autoSpin,
+  spinSpeedIndex,
+}, ref) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const containerBRef = useRef<HTMLDivElement | null>(null);
 
   const viewerARef = useRef<Cesium.Viewer | null>(null);
   const viewerBRef = useRef<Cesium.Viewer | null>(null);
 
-  // Trajectory toggles
-  const [showSunOrbit, setShowSunOrbit] = useState(true);
-  const [showEarthOrbit, setShowEarthOrbit] = useState(true);
-  const [showSightlines, setShowSightlines] = useState(true);
-
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
 
   // Auto-Spin Turntable state (3D Moon rotation)
-  const [autoSpin, setAutoSpin] = useState<boolean>(false);
   const isInteractingRef = useRef<boolean>(false);
   const interactionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [spinSpeedIndex, setSpinSpeedIndex] = useState<number>(1); // 0 = 1x (~15°/s), 1 = 2x (~32°/s), 2 = 4x (~65°/s)
   const spinSpeeds = [0.25, 0.55, 1.15];
 
   // Dynamic 3D celestial positions in Moon-fixed frame (evaluated at 60fps)
@@ -991,6 +1004,17 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [viewMode]);
 
+  // Expose Camera and Navigation API to parent/right-panel
+  useImperativeHandle(ref, () => ({
+    flyToSouthPole,
+    flyToSiteA,
+    flyToSiteB,
+    flyToOrbitalVista,
+    handleFitMoon,
+    handleZoomIn,
+    handleZoomOut,
+  }));
+
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-space-950 select-none">
       {/* Main 3D Cesium Viewports */}
@@ -1074,111 +1098,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             <span>Dbl-Click: Focus</span>
           </div>
         </div>
-
-        {/* Camera Quick Presets (Bottom Left of 3D Viewport) using shadcn Button */}
-        <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-1.5 bg-space-900/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/70 text-xs">
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={flyToSouthPole}
-            className="font-mono"
-          >
-            South Pole (85°-90°S)
-          </Button>
-          <Button
-            variant="cyanPill"
-            size="xs"
-            onClick={flyToSiteA}
-            className="font-mono"
-          >
-            Site A Zoom
-          </Button>
-          {siteB && (
-            <Button
-              variant="amberPill"
-              size="xs"
-              onClick={flyToSiteB}
-              className="font-mono"
-            >
-              Site B Zoom
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            size="xs"
-            onClick={flyToOrbitalVista}
-            className="font-mono"
-          >
-            Orbital Vista
-          </Button>
-
-          <div className="h-4 w-px bg-slate-700 mx-1" />
-
-          {/* Toggle Sightlines & Trajectories */}
-          <Button
-            variant={showSightlines ? 'cyanPill' : 'ghost'}
-            size="xs"
-            onClick={() => setShowSightlines(!showSightlines)}
-            className="font-mono"
-          >
-            Laser Rays
-          </Button>
-          <Button
-            variant={showSunOrbit ? 'amberPill' : 'ghost'}
-            size="xs"
-            onClick={() => setShowSunOrbit(!showSunOrbit)}
-            className="font-mono"
-          >
-            Sun Orbit
-          </Button>
-          <Button
-            variant={showEarthOrbit ? 'cyanPill' : 'ghost'}
-            size="xs"
-            onClick={() => setShowEarthOrbit(!showEarthOrbit)}
-            className="font-mono"
-          >
-            Earth Libration
-          </Button>
-
-          <div className="h-4 w-px bg-slate-700 mx-1" />
-
-          {/* Auto-Spin Moon Turntable Controls */}
-          <Button
-            variant={autoSpin ? 'nasa' : 'secondary'}
-            size="xs"
-            onClick={() => setAutoSpin(!autoSpin)}
-            className="font-mono gap-1"
-            title="Toggle fast 3D rotation of the Moon"
-          >
-            <RotateCw className={`w-3 h-3 ${autoSpin ? 'animate-spin' : ''}`} />
-            <span>{autoSpin ? 'Auto-Spin' : 'Spin Paused'}</span>
-          </Button>
-
-          {autoSpin && (
-            <Button
-              variant="secondary"
-              size="xs"
-              onClick={() => setSpinSpeedIndex((prev) => (prev + 1) % spinSpeeds.length)}
-              title="Click to cycle spin speed (1x, 2x, 4x)"
-              className="font-mono text-[10px] px-1.5 text-cyan-300 font-bold"
-            >
-              {['1x', '2x', '4x'][spinSpeedIndex]}
-            </Button>
-          )}
-        </div>
-
-        {/* 3D Legend & Scientific Layer Indicator (Bottom Right of Viewport) */}
-        <div className="absolute bottom-4 right-4 z-20 flex items-center gap-3 bg-space-900/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/70 text-[11px] font-mono text-slate-400">
-          <span className="flex items-center gap-1.5 text-solar-gold">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-sm shadow-amber-400/50" />
-            Cesium Sun Model
-          </span>
-          <span className="flex items-center gap-1.5 text-comm-cyan">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400/50" />
-            Cesium Earth Model
-          </span>
-        </div>
       </div>
     </div>
   );
-};
+});
