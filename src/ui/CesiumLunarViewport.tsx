@@ -6,8 +6,9 @@ import {
   Site,
   Vector3D,
 } from '../types';
-import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw } from 'lucide-react';
+import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
+import { ShortcutsModal } from './ShortcutsModal';
 
 // Procedural high-resolution radiant solar disk with corona
 function createSunCanvas(): HTMLCanvasElement {
@@ -210,6 +211,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
 
   // Auto-Spin Turntable state (3D Moon rotation)
   const isInteractingRef = useRef<boolean>(false);
@@ -1428,6 +1430,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         handleZoomIn();
       } else if (e.key === '-' || e.key === '_') {
         handleZoomOut();
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        setShowShortcutsModal((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -1516,18 +1520,26 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </Button>
-          </div>
 
-          {/* Mouse & Trackpad Navigation Quick Guide Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-slate-800 text-[10px] text-slate-300 shadow-md">
-            <span className="text-cyan-400 font-semibold">Shift + Move:</span>
-            <span>Pan</span>
-            <span className="text-slate-600">•</span>
-            <span>Drag: Orbit</span>
-            <span className="text-slate-600">•</span>
-            <span>Wheel: Zoom</span>
+            <div className="h-px w-5 bg-slate-700/80 my-0.5" />
+
+            {/* Navigation & Shortcuts Help Dialog Button */}
+            <Button
+              variant="secondary"
+              size="icon-sm"
+              onClick={() => setShowShortcutsModal(true)}
+              title="All Navigation & Keyboard Shortcuts (?)"
+              className="h-7 w-7 text-slate-300 hover:text-cyan-300 font-bold"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+            </Button>
           </div>
         </div>
+
+        {/* Shortcuts & Navigation Reference Modal */}
+        {showShortcutsModal && (
+          <ShortcutsModal onClose={() => setShowShortcutsModal(false)} />
+        )}
       </div>
     </div>
   );
