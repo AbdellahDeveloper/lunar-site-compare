@@ -51,7 +51,7 @@ export const App: React.FC = () => {
 
   const [currentScrubMs, setCurrentScrubMs] = useState(windowStartMs);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(60);
+  const [playbackSpeed, setPlaybackSpeed] = useState(24); // 24 hours (1 full day) per second
 
   // Landing Sites
   const [siteA, setSiteA] = useState<Site>(
@@ -264,7 +264,8 @@ export const App: React.FC = () => {
       lastTickRef.current = now;
 
       setCurrentScrubMs((prev) => {
-        const next = prev + dtSec * playbackSpeed * 60 * 1000;
+        // Fast dynamic simulation: playbackSpeed is hours advanced per real second
+        const next = prev + dtSec * playbackSpeed * 3600 * 1000;
         if (next >= windowEndMs) {
           setIsPlaying(false);
           return windowEndMs;

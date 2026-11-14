@@ -56,7 +56,14 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
     }
   };
 
-  const speedOptions = [1, 10, 60, 300, 1200];
+  const speedOptions = [
+    { value: 1, label: '1h/s' },
+    { value: 6, label: '6h/s' },
+    { value: 24, label: '1d/s' },
+    { value: 72, label: '3d/s' },
+    { value: 168, label: '1w/s' },
+    { value: 336, label: 'Turbo' },
+  ];
 
   return (
     <div className="z-30 w-full bg-space-950/95 backdrop-blur-lg border-t border-slate-800 px-4 py-2.5 shadow-2xl flex flex-col gap-2">
@@ -186,18 +193,18 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
           </Button>
         </form>
 
-        {/* Right: Speed Multiplier */}
-        <div className="flex items-center gap-1.5">
+        {/* Right: Simulation Speed Multiplier */}
+        <div className="flex items-center gap-1">
           <span className="text-slate-500 text-[11px] font-mono mr-1">Speed:</span>
-          {speedOptions.map((spd) => (
+          {speedOptions.map((opt) => (
             <Button
-              key={spd}
+              key={opt.value}
               size="xs"
-              variant={playbackSpeed === spd ? 'cyanPill' : 'secondary'}
-              onClick={() => onSetSpeed(spd)}
-              className="font-mono"
+              variant={playbackSpeed === opt.value ? 'cyanPill' : 'secondary'}
+              onClick={() => onSetSpeed(opt.value)}
+              className="font-mono text-[10px] px-1.5"
             >
-              {spd}x
+              {opt.label}
             </Button>
           ))}
         </div>

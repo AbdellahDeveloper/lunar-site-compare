@@ -7,7 +7,7 @@ import {
   Site,
   Vector3D,
 } from '../types';
-import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw } from 'lucide-react';
+import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 
 interface CesiumLunarViewportProps {
@@ -50,6 +50,11 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
 
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
+
+  // Auto-Spin Turntable state (Fast 3D Moon rotation)
+  const [autoSpin, setAutoSpin] = useState<boolean>(true);
+  const [spinSpeedIndex, setSpinSpeedIndex] = useState<number>(1); // 0 = 1x (~15°/s), 1 = 2x (~32°/s), 2 = 4x (~65°/s)
+  const spinSpeeds = [0.25, 0.55, 1.15];
 
   // Initialize Cesium with Moon Ellipsoid
   const createCesiumMoonViewer = (
@@ -163,8 +168,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   ) => {
     if (!viewer || viewer.isDestroyed()) return;
 
-    viewer.entities.removeAll();
-
     const moon = Cesium.Ellipsoid.MOON;
 
     // 1. Calculate Real Solar & Earth Positions in Cesium Space
@@ -178,6 +181,13 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     const earthDir = new Cesium.Cartesian3(earthVec.x / eLen, earthVec.y / eLen, earthVec.z / eLen);
     const earthPos = Cesium.Cartesian3.multiplyByScalar(earthDir, 9000000.0, new Cesium.Cartesian3());
 
+    const siteAPos = Cesium.Cartesian3.fromDegrees(
+      primarySite.lon,
+      primarySite.lat,
+      primarySite.elevKm * 1000,
+      moon
+    );
+
     // Update Real Directional Sunlight illuminating the Moon
     viewer.scene.light = new Cesium.DirectionalLight({
       direction: Cesium.Cartesian3.negate(sunDir, new Cesium.Cartesian3()),
@@ -185,8 +195,54 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       intensity: 3.5,
     });
 
+    // Check if dynamic entities already exist for in-place 60fps update
+    const sunEntity = viewer.entities.getById('sun_model');
+    const earthEntity = viewer.entities.getById('earth_model');
+
+    if (sunEntity && earthEntity) {
+      sunEntity.position = new Cesium.ConstantPositionProperty(sunPos);
+      earthEntity.position = new Cesium.ConstantPositionProperty(earthPos);
+
+      const raySunA = viewer.entities.getById('ray_sun_a');
+      if (raySunA && raySunA.polyline) {
+        raySunA.polyline.positions = new Cesium.ConstantProperty([siteAPos, sunPos]);
+        raySunA.show = showSightlines;
+      }
+      const rayEarthA = viewer.entities.getById('ray_earth_a');
+      if (rayEarthA && rayEarthA.polyline) {
+        rayEarthA.polyline.positions = new Cesium.ConstantProperty([siteAPos, earthPos]);
+        rayEarthA.show = showSightlines;
+      }
+
+      if (secondarySite) {
+        const siteBPos = Cesium.Cartesian3.fromDegrees(
+          secondarySite.lon,
+          secondarySite.lat,
+          secondarySite.elevKm * 1000,
+          moon
+        );
+        const raySunB = viewer.entities.getById('ray_sun_b');
+        if (raySunB && raySunB.polyline) {
+          raySunB.polyline.positions = new Cesium.ConstantProperty([siteBPos, sunPos]);
+          raySunB.show = showSightlines;
+        }
+        const rayEarthB = viewer.entities.getById('ray_earth_b');
+        if (rayEarthB && rayEarthB.polyline) {
+          rayEarthB.polyline.positions = new Cesium.ConstantProperty([siteBPos, earthPos]);
+          rayEarthB.show = showSightlines;
+        }
+      }
+
+      viewer.scene.requestRender();
+      return;
+    }
+
+    // Full creation if first load or after clear
+    viewer.entities.removeAll();
+
     // 2. Real 3D Sun Model with Glowing Corona
     viewer.entities.add({
+      id: 'sun_model',
       name: 'Sun Model',
       position: sunPos,
       ellipsoid: {
@@ -208,6 +264,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
 
     // 3. Real 3D Earth Model with Atmosphere Halo
     viewer.entities.add({
+      id: 'earth_model',
       name: 'Earth Model',
       position: earthPos,
       ellipsoid: {
@@ -228,14 +285,8 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     });
 
     // 4. Site A Landing Pin
-    const siteAPos = Cesium.Cartesian3.fromDegrees(
-      primarySite.lon,
-      primarySite.lat,
-      primarySite.elevKm * 1000,
-      moon
-    );
-
     viewer.entities.add({
+      id: 'site_a_pin',
       name: primarySite.name,
       position: siteAPos,
       point: {
@@ -255,6 +306,32 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       },
     });
 
+    // Directional Laser Rays from Site A
+    viewer.entities.add({
+      id: 'ray_sun_a',
+      show: showSightlines,
+      polyline: {
+        positions: [siteAPos, sunPos],
+        width: 2.5,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.3,
+          color: Cesium.Color.fromCssColorString('#f59e0b'),
+        }),
+      },
+    });
+    viewer.entities.add({
+      id: 'ray_earth_a',
+      show: showSightlines,
+      polyline: {
+        positions: [siteAPos, earthPos],
+        width: 2.5,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.3,
+          color: Cesium.Color.fromCssColorString('#06b6d4'),
+        }),
+      },
+    });
+
     // 5. Site B Landing Pin (if available)
     if (secondarySite) {
       const siteBPos = Cesium.Cartesian3.fromDegrees(
@@ -265,6 +342,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       );
 
       viewer.entities.add({
+        id: 'site_b_pin',
         name: secondarySite.name,
         position: siteBPos,
         point: {
@@ -284,49 +362,27 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
         },
       });
 
-      // Directional Laser Rays from Site B if enabled
-      if (showSightlines) {
-        viewer.entities.add({
-          polyline: {
-            positions: [siteBPos, sunPos],
-            width: 2.0,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.25,
-              color: Cesium.Color.fromCssColorString('#f59e0b'),
-            }),
-          },
-        });
-        viewer.entities.add({
-          polyline: {
-            positions: [siteBPos, earthPos],
-            width: 2.0,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.25,
-              color: Cesium.Color.fromCssColorString('#06b6d4'),
-            }),
-          },
-        });
-      }
-    }
-
-    // Directional Laser Rays from Site A
-    if (showSightlines) {
+      // Directional Laser Rays from Site B
       viewer.entities.add({
+        id: 'ray_sun_b',
+        show: showSightlines,
         polyline: {
-          positions: [siteAPos, sunPos],
-          width: 2.5,
+          positions: [siteBPos, sunPos],
+          width: 2.0,
           material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.3,
+            glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#f59e0b'),
           }),
         },
       });
       viewer.entities.add({
+        id: 'ray_earth_b',
+        show: showSightlines,
         polyline: {
-          positions: [siteAPos, earthPos],
-          width: 2.5,
+          positions: [siteBPos, earthPos],
+          width: 2.0,
           material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.3,
+            glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#06b6d4'),
           }),
         },
@@ -386,7 +442,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
 
     // 7. Scientific Exploration Overlays (LRO LEND Volatiles / Diviner Rockiness / PSRs)
     if (scientificLayer === 'volatiles') {
-      // Permanently Shadowed Regions (PSRs) Cold Traps in Electric Teal
       const psrs = [
         { name: 'Shackleton PSR', lat: -89.78, lon: 129.5, rMeters: 10500 },
         { name: 'Haworth PSR', lat: -87.4, lon: -5.1, rMeters: 25000 },
@@ -408,7 +463,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
         });
       }
     } else if (scientificLayer === 'thermal') {
-      // Diviner Thermal Inertia / Rockiness Zones
       const thermalZones = [
         { lat: -84.9, lon: 12.9, rMeters: 35000, color: 'rgba(236, 72, 153, 0.55)' },
         { lat: -85.2, lon: 35.8, rMeters: 28000, color: 'rgba(249, 115, 22, 0.55)' },
@@ -424,10 +478,14 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
         });
       }
     }
+
+    viewer.scene.requestRender();
   };
 
-  // Sync Entities when coordinates or ephemeris changes
+  // Re-build entities when sites, layers, or trajectory toggles change
   useEffect(() => {
+    viewerARef.current?.entities.removeAll();
+    viewerBRef.current?.entities.removeAll();
     updateViewerEntities(viewerARef.current, siteA, siteB);
     if (viewMode === 'split') {
       updateViewerEntities(viewerBRef.current, siteB || siteA, siteA);
@@ -435,14 +493,57 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   }, [
     siteA,
     siteB,
-    sunVec,
-    earthVec,
     scientificLayer,
     showSightlines,
     showSunOrbit,
     showEarthOrbit,
     allPointsA,
   ]);
+
+  // Fast 60fps in-place update for Sun, Earth, Rays, Light
+  useEffect(() => {
+    updateViewerEntities(viewerARef.current, siteA, siteB);
+    if (viewMode === 'split') {
+      updateViewerEntities(viewerBRef.current, siteB || siteA, siteA);
+    }
+  }, [sunVec, earthVec]);
+
+  // High-Speed Auto-Spin Turntable Loop
+  useEffect(() => {
+    let animId: number;
+    let lastTime = performance.now();
+
+    const spinLoop = (now: number) => {
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+
+      if (autoSpin) {
+        const radPerSec = spinSpeeds[spinSpeedIndex] || 0.55;
+        const angle = radPerSec * dt;
+        const rotMat = Cesium.Matrix3.fromRotationZ(angle);
+
+        const rotateViewer = (viewer: Cesium.Viewer | null) => {
+          if (!viewer || viewer.isDestroyed()) return;
+          const cam = viewer.camera;
+          Cesium.Matrix3.multiplyByVector(rotMat, cam.position, cam.position);
+          Cesium.Matrix3.multiplyByVector(rotMat, cam.direction, cam.direction);
+          Cesium.Matrix3.multiplyByVector(rotMat, cam.up, cam.up);
+          Cesium.Matrix3.multiplyByVector(rotMat, cam.right, cam.right);
+          viewer.scene.requestRender();
+        };
+
+        rotateViewer(viewerARef.current);
+        if (viewMode === 'split') {
+          rotateViewer(viewerBRef.current);
+        }
+      }
+
+      animId = requestAnimationFrame(spinLoop);
+    };
+
+    animId = requestAnimationFrame(spinLoop);
+    return () => cancelAnimationFrame(animId);
+  }, [autoSpin, spinSpeedIndex, viewMode]);
 
   // Quick Camera Presets
   const flyToSouthPole = () => {
@@ -774,6 +875,32 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
           >
             Earth Libration
           </Button>
+
+          <div className="h-4 w-px bg-slate-700 mx-1" />
+
+          {/* Auto-Spin Moon Turntable Controls */}
+          <Button
+            variant={autoSpin ? 'nasa' : 'secondary'}
+            size="xs"
+            onClick={() => setAutoSpin(!autoSpin)}
+            className="font-mono gap-1"
+            title="Toggle fast 3D rotation of the Moon"
+          >
+            <RotateCw className={`w-3 h-3 ${autoSpin ? 'animate-spin' : ''}`} />
+            <span>{autoSpin ? 'Auto-Spin' : 'Spin Paused'}</span>
+          </Button>
+
+          {autoSpin && (
+            <Button
+              variant="secondary"
+              size="xs"
+              onClick={() => setSpinSpeedIndex((prev) => (prev + 1) % spinSpeeds.length)}
+              title="Click to cycle spin speed (1x, 2x, 4x)"
+              className="font-mono text-[10px] px-1.5 text-cyan-300 font-bold"
+            >
+              {['1x', '2x', '4x'][spinSpeedIndex]}
+            </Button>
+          )}
         </div>
 
         {/* 3D Legend & Scientific Layer Indicator (Bottom Right of Viewport) */}
