@@ -9,15 +9,13 @@ import {
   Droplet,
   Sun,
   Moon,
-  Zap,
-  Radio,
 } from 'lucide-react';
 import { Button, Badge, Card, CardHeader, CardTitle, CardContent, Select } from '@/components/ui';
 
 interface LeftControlPanelProps {
   siteA: Site;
   siteB: Site;
-  currentPointA: EphemerisPoint;
+  currentPointA?: EphemerisPoint;
   currentPointB?: EphemerisPoint;
   onSelectSiteA: (site: Site) => void;
   onSelectSiteB: (site: Site) => void;
@@ -30,8 +28,6 @@ interface LeftControlPanelProps {
 export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
   siteA,
   siteB,
-  currentPointA,
-  currentPointB,
   onSelectSiteA,
   onSelectSiteB,
   allSites,
@@ -158,118 +154,6 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
                   ))}
               </optgroup>
             </Select>
-          </div>
-
-          {/* Live Real-Time Telemetry Cards (Docked in Side Panel) */}
-          <div className="flex flex-col gap-2 pt-1 font-mono">
-            <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center justify-between">
-              <span>Live Telemetry Status</span>
-              <span className="text-[9px] text-cyan-400">REAL-TIME</span>
-            </div>
-
-            {/* Location A Live Status */}
-            <div className="flex flex-col gap-2 bg-space-900/95 p-2.5 rounded-xl border border-cyan-500/40 shadow-lg shadow-cyan-950/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-                  <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider shrink-0">
-                    LOCATION A
-                  </span>
-                  <span className="text-xs font-bold text-slate-100 truncate ml-1">
-                    {siteA.name.split('(')[0].trim()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-800 text-[11px]">
-                {/* Solar Power */}
-                <div className="flex flex-col">
-                  <span className="text-[9px] text-slate-500 uppercase">SOLAR POWER</span>
-                  <span
-                    className={`font-bold flex items-center gap-1 ${
-                      currentPointA.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
-                    }`}
-                  >
-                    <Zap className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">
-                      {currentPointA.sun.isVisible
-                        ? `LIT (${currentPointA.sun.elevationDeg.toFixed(1)}°)`
-                        : `SHADOW (${currentPointA.sun.elevationDeg.toFixed(1)}°)`}
-                    </span>
-                  </span>
-                </div>
-
-                {/* Earth DTE */}
-                <div className="flex flex-col">
-                  <span className="text-[9px] text-slate-500 uppercase">EARTH DTE</span>
-                  <span
-                    className={`font-bold flex items-center gap-1 ${
-                      currentPointA.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
-                    }`}
-                  >
-                    <Radio className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">
-                      {currentPointA.earth.isVisible
-                        ? `LINK (${currentPointA.earth.elevationDeg.toFixed(1)}°)`
-                        : `OCCULT (${currentPointA.earth.elevationDeg.toFixed(1)}°)`}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Location B Live Status (when comparing) */}
-            {siteB && currentPointB && (
-              <div className="flex flex-col gap-2 bg-space-900/95 p-2.5 rounded-xl border border-amber-500/40 shadow-lg shadow-amber-950/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-                    <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider shrink-0">
-                      LOCATION B
-                    </span>
-                    <span className="text-xs font-bold text-slate-100 truncate ml-1">
-                      {siteB.name.split('(')[0].trim()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-slate-800 text-[11px]">
-                  {/* Solar Power */}
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-slate-500 uppercase">SOLAR POWER</span>
-                    <span
-                      className={`font-bold flex items-center gap-1 ${
-                        currentPointB.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
-                      }`}
-                    >
-                      <Zap className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">
-                        {currentPointB.sun.isVisible
-                          ? `LIT (${currentPointB.sun.elevationDeg.toFixed(1)}°)`
-                          : `SHADOW (${currentPointB.sun.elevationDeg.toFixed(1)}°)`}
-                      </span>
-                    </span>
-                  </div>
-
-                  {/* Earth DTE */}
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-slate-500 uppercase">EARTH DTE</span>
-                    <span
-                      className={`font-bold flex items-center gap-1 ${
-                        currentPointB.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
-                      }`}
-                    >
-                      <Radio className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">
-                        {currentPointB.earth.isVisible
-                          ? `LINK (${currentPointB.earth.elevationDeg.toFixed(1)}°)`
-                          : `OCCULT (${currentPointB.earth.elevationDeg.toFixed(1)}°)`}
-                      </span>
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Target Scientific & Terrain Profile Card using shadcn Card */}

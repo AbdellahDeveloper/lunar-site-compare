@@ -336,8 +336,6 @@ export const App: React.FC = () => {
         <LeftControlPanel
           siteA={siteA}
           siteB={siteB}
-          currentPointA={currentPointA}
-          currentPointB={currentPointB}
           onSelectSiteA={setSiteA}
           onSelectSiteB={setSiteB}
           allSites={LUNAR_SITES}
