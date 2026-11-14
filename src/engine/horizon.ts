@@ -46,3 +46,4 @@ export function getHorizonElevation(
 
   return el0 + frac * (el1 - el0);
 }
+

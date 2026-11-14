@@ -147,3 +147,4 @@ export function findAlternativeScenarios(
   candidates.sort((a, b) => b.score - a.score);
   return candidates;
 }
+

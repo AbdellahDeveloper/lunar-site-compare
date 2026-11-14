@@ -363,3 +363,4 @@ export const HorizonPanorama: React.FC<HorizonPanoramaProps> = ({
     </div>
   );
 };
+

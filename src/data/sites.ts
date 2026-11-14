@@ -11,9 +11,13 @@ export const LUNAR_SITES: Site[] = [
     lon: 129.50,
     elevKm: 1.20,
     verified: true,
-    note: 'One of the prime candidate landing regions for Artemis III/IV. Rim peaks receive up to ~85% annual sunlight and overlook deep PSR ice traps.',
+    note: 'Prime Artemis candidate. Overlooks 4.2 km deep permanently shadowed crater holding ice cold traps. Peak receives ~86% annual sunlight.',
     targetDate: '2026-11-20',
     hasCustomHorizon: true,
+    rockAbundance: 14, // moderate rockiness on ridge
+    thermalInertia: 65,
+    volatileIceScore: 92, // extremely high proximity to Shackleton PSR
+    isPsrColdTrap: false,
   },
   {
     id: 'malapert-mountain',
@@ -28,6 +32,10 @@ export const LUNAR_SITES: Site[] = [
     note: '5,000 m massif providing an uninterrupted direct line-of-sight to Earth and exceptional solar exposure over the polar summer.',
     targetDate: '2026-12-15',
     hasCustomHorizon: true,
+    rockAbundance: 22, // steep slopes have higher boulder count
+    thermalInertia: 85,
+    volatileIceScore: 54, // moderate hydrogen signatures in surrounding shadows
+    isPsrColdTrap: false,
   },
   {
     id: 'nobile-rim-1',
@@ -42,6 +50,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Mountainous rim terrain near PSRs with rich volatile prospecting potential; subject to libration-driven Earth dips.',
     targetDate: '2027-02-10',
     hasCustomHorizon: true,
+    rockAbundance: 18,
+    thermalInertia: 72,
+    volatileIceScore: 88, // strong LEND epithermal neutron suppression
+    isPsrColdTrap: false,
   },
   {
     id: 'mons-mouton',
@@ -56,6 +68,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Broad, flat-topped lunar mountain named after NASA mathematician Melba Mouton. Favorable rover trafficability and high solar availability.',
     targetDate: '2026-11-25',
     hasCustomHorizon: true,
+    rockAbundance: 8, // smooth regolith plateau, very safe for landing
+    thermalInertia: 48,
+    volatileIceScore: 68,
+    isPsrColdTrap: false,
   },
   {
     id: 'haworth-rim',
@@ -70,6 +86,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Flanks one of the coldest craters on the Moon (Haworth interior drops to 35 Kelvin). High terrain mask obstruction from adjacent massifs.',
     targetDate: '2026-12-01',
     hasCustomHorizon: true,
+    rockAbundance: 19,
+    thermalInertia: 75,
+    volatileIceScore: 96, // premier ice prospecting target
+    isPsrColdTrap: false,
   },
   {
     id: 'de-gerlache-rim',
@@ -84,6 +104,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Connecting ridge between Shackleton and de Gerlache. Excellent communications geometry with intermittent grazing solar passes.',
     targetDate: '2027-01-15',
     hasCustomHorizon: true,
+    rockAbundance: 12,
+    thermalInertia: 58,
+    volatileIceScore: 84,
+    isPsrColdTrap: false,
   },
   {
     id: 'chandrayaan-3',
@@ -98,6 +122,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Historic first successful landing in the lunar high-latitude southern region on August 23, 2023 by the Vikram lander and Pragyan rover.',
     targetDate: '2023-08-23',
     hasCustomHorizon: true,
+    rockAbundance: 11,
+    thermalInertia: 52,
+    volatileIceScore: 38,
+    isPsrColdTrap: false,
   },
   {
     id: 'apollo-11',
@@ -112,6 +140,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'First human Moon landing on July 20, 1969. Sun elevation was 10.7° at touchdown with 100% continuous direct Earth line-of-sight near lunar zenith.',
     targetDate: '1969-07-20',
     hasCustomHorizon: true,
+    rockAbundance: 6, // very low rock hazard, fine regolith
+    thermalInertia: 42,
+    volatileIceScore: 5, // dry equatorial mare
+    isPsrColdTrap: false,
   },
   {
     id: 'apollo-17',
@@ -126,6 +158,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'Deep geological valley explored by Gene Cernan and Harrison Schmitt in December 1972, surrounded by North and South Massifs.',
     targetDate: '1972-12-11',
     hasCustomHorizon: false,
+    rockAbundance: 16,
+    thermalInertia: 64,
+    volatileIceScore: 8,
+    isPsrColdTrap: false,
   },
   {
     id: 'change-4',
@@ -140,6 +176,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'First soft landing on the lunar far side inside the South Pole-Aitken basin. Earth is permanently occulted; requires Queqiao relay orbiter at Earth-Moon L2.',
     targetDate: '2019-01-03',
     hasCustomHorizon: true,
+    rockAbundance: 9,
+    thermalInertia: 46,
+    volatileIceScore: 20,
+    isPsrColdTrap: false,
   },
   {
     id: 'change-6',
@@ -154,6 +194,10 @@ export const LUNAR_SITES: Site[] = [
     note: 'First sample return mission from the lunar farside (June 2024), supported by the Queqiao-2 relay satellite.',
     targetDate: '2024-06-01',
     hasCustomHorizon: false,
+    rockAbundance: 10,
+    thermalInertia: 49,
+    volatileIceScore: 22,
+    isPsrColdTrap: false,
   },
   {
     id: 'slim',
@@ -168,5 +212,9 @@ export const LUNAR_SITES: Site[] = [
     note: 'Smart Lander for Investigating Moon. Achieved 3-4 meter pinpoint landing precision on a 15-degree crater slope in January 2024.',
     targetDate: '2024-01-19',
     hasCustomHorizon: false,
+    rockAbundance: 28, // steep rocky crater slope
+    thermalInertia: 95,
+    volatileIceScore: 12,
+    isPsrColdTrap: false,
   },
 ];

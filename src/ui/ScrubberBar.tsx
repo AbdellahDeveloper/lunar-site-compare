@@ -152,3 +152,4 @@ export const ScrubberBar: React.FC<ScrubberBarProps> = ({
     </div>
   );
 };
+

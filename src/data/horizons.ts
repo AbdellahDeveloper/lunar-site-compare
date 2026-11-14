@@ -159,3 +159,4 @@ export function generateCustomHorizon(lat: number, lon: number, elevKm: number):
     elevations,
   };
 }
+

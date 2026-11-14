@@ -405,3 +405,4 @@ export const MapPicker2D: React.FC<MapPicker2DProps> = ({
     </div>
   );
 };
+

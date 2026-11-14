@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  AppMode,
+  ComparisonViewMode,
   EphemerisPoint,
   HorizonMask,
+  ScientificLayer,
   ScenarioConfig,
   ScenarioEvaluation,
   Site,
   SlipCase,
+  UIMode,
 } from './types';
 import { LUNAR_SITES } from './data/sites';
 import { PRECOMPUTED_HORIZONS, generateCustomHorizon } from './data/horizons';
@@ -16,46 +18,29 @@ import { bodyVectors } from './engine/moon';
 import { createLocalFrame } from './engine/local';
 import { computeSlipAnalysis } from './engine/slip';
 import { findAlternativeScenarios, AlternativeCandidate } from './engine/alternatives';
-import { Header } from './ui/Header';
-import { ScenarioCard } from './ui/ScenarioCard';
-import { ScrubberBar } from './ui/ScrubberBar';
+import { runMonteCarloAssessment } from './engine/monteCarlo';
+import { NasaHeader } from './ui/NasaHeader';
+import { CentralLunarViewport3D } from './ui/CentralLunarViewport3D';
+import { LeftControlPanel } from './ui/LeftControlPanel';
+import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
+import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
 import { SlipTable } from './ui/SlipTable';
 import { AlternativesModal } from './ui/AlternativesModal';
 import { MapPicker2D } from './ui/MapPicker2D';
 import { LearnTourModal } from './ui/LearnTourModal';
 import { ExportModal } from './ui/ExportModal';
-import { ComparisonSummary } from './ui/ComparisonSummary';
 import { X } from 'lucide-react';
 
-const INITIAL_SCENARIOS: ScenarioConfig[] = [
-  {
-    id: 'sc-1',
-    name: 'Scenario A: Shackleton Rim',
-    siteId: 'shackleton-rim',
-    customLat: -89.78,
-    customLon: 129.5,
-    customElevKm: 1.2,
-    customName: 'Shackleton Rim (Connecting Ridge)',
-    useTerrain: true,
-  },
-  {
-    id: 'sc-2',
-    name: 'Scenario B: Malapert Mountain',
-    siteId: 'malapert-mountain',
-    customLat: -84.9,
-    customLon: 12.9,
-    customElevKm: 5.0,
-    customName: 'Malapert Mountain (CLPS IM-2)',
-    useTerrain: true,
-  },
-];
-
 export const App: React.FC = () => {
-  const [mode, setMode] = useState<AppMode>('planner');
+  // UI & View Mode: starts in Simple View with 3D-first central focus
+  const [uiMode, setUIMode] = useState<UIMode>('simple');
+  const [viewMode, setViewMode] = useState<ComparisonViewMode>('overlapped');
+  const [scientificLayer, setScientificLayer] = useState<ScientificLayer>('none');
+
+  // Epoch & Window
   const [startDateIso, setStartDateIso] = useState('2026-11-20');
   const [windowDays, setWindowDays] = useState(28);
 
-  // Time boundaries
   const windowStartMs = useMemo(() => {
     return new Date(`${startDateIso}T00:00:00Z`).getTime();
   }, [startDateIso]);
@@ -66,20 +51,25 @@ export const App: React.FC = () => {
 
   const [currentScrubMs, setCurrentScrubMs] = useState(windowStartMs);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(60); // 60x real-time
+  const [playbackSpeed, setPlaybackSpeed] = useState(60);
 
-  const [scenarios, setScenarios] = useState<ScenarioConfig[]>(INITIAL_SCENARIOS);
+  // Landing Sites
+  const [siteA, setSiteA] = useState<Site>(
+    LUNAR_SITES.find((s) => s.id === 'shackleton-rim') || LUNAR_SITES[0]
+  );
+  const [siteB, setSiteB] = useState<Site>(
+    LUNAR_SITES.find((s) => s.id === 'malapert-mountain') || LUNAR_SITES[1]
+  );
 
-  // Modals state
+  // Modals
   const [showSlipModal, setShowSlipModal] = useState(false);
   const [showAlternativesModal, setShowAlternativesModal] = useState(false);
   const [showMapPickerModal, setShowMapPickerModal] = useState(false);
-  const [mapTargetScenarioId, setMapTargetScenarioId] = useState<string>('sc-1');
+  const [mapTarget, setMapTarget] = useState<'A' | 'B'>('A');
   const [showLearnTourModal, setShowLearnTourModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportScenarioId, setExportScenarioId] = useState<string>('sc-1');
 
-  // Reset scrub time when window boundaries change
+  // Reset scrub when window shifts
   useEffect(() => {
     if (currentScrubMs < windowStartMs || currentScrubMs > windowEndMs) {
       setCurrentScrubMs(windowStartMs);
@@ -94,40 +84,27 @@ export const App: React.FC = () => {
         const params = new URLSearchParams(hash);
         const epoch = params.get('epoch');
         const days = params.get('days');
-        const s1 = params.get('s1');
-        const s2 = params.get('s2');
+        const sA = params.get('sA');
+        const sB = params.get('sB');
         const m = params.get('mode');
+        const vm = params.get('view');
+        const layer = params.get('layer');
 
         if (epoch) setStartDateIso(epoch);
         if (days) setWindowDays(Number(days));
-        if (m === 'planner' || m === 'explorer' || m === 'learn') setMode(m);
+        if (m === 'simple' || m === 'detailed') setUIMode(m);
+        if (vm === 'overlapped' || vm === 'split') setViewMode(vm);
+        if (layer === 'none' || layer === 'volatiles' || layer === 'thermal' || layer === 'shadow') {
+          setScientificLayer(layer);
+        }
 
-        if (s1) {
-          const newScenarios: ScenarioConfig[] = [
-            {
-              id: 'sc-1',
-              name: 'Scenario A',
-              siteId: s1,
-              customLat: -89.78,
-              customLon: 129.5,
-              customElevKm: 1.2,
-              customName: s1,
-              useTerrain: true,
-            },
-          ];
-          if (s2) {
-            newScenarios.push({
-              id: 'sc-2',
-              name: 'Scenario B',
-              siteId: s2,
-              customLat: -84.9,
-              customLon: 12.9,
-              customElevKm: 5.0,
-              customName: s2,
-              useTerrain: true,
-            });
-          }
-          setScenarios(newScenarios);
+        if (sA) {
+          const matchA = LUNAR_SITES.find((s) => s.id === sA);
+          if (matchA) setSiteA(matchA);
+        }
+        if (sB) {
+          const matchB = LUNAR_SITES.find((s) => s.id === sB);
+          if (matchB) setSiteB(matchB);
         }
       }
     } catch {
@@ -135,90 +112,146 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Update URL Hash on share
   const handleShareUrl = () => {
     const params = new URLSearchParams();
     params.set('epoch', startDateIso);
     params.set('days', windowDays.toString());
-    params.set('mode', mode);
-    scenarios.forEach((sc, idx) => {
-      params.set(`s${idx + 1}`, sc.siteId);
-    });
+    params.set('mode', uiMode);
+    params.set('view', viewMode);
+    params.set('layer', scientificLayer);
+    params.set('sA', siteA.id);
+    params.set('sB', siteB.id);
     const url = `${window.location.origin}${window.location.pathname}#${params.toString()}`;
     navigator.clipboard.writeText(url);
   };
 
-  // Resolve Horizon Mask for each scenario
-  const getScenarioMask = (sc: ScenarioConfig): HorizonMask | null => {
-    if (sc.siteId === 'custom') {
-      return generateCustomHorizon(sc.customLat, sc.customLon, sc.customElevKm);
-    }
-    const pre = PRECOMPUTED_HORIZONS[sc.siteId];
-    if (pre) return pre;
-    const site = LUNAR_SITES.find((s) => s.id === sc.siteId);
-    if (site) {
-      return generateCustomHorizon(site.lat, site.lon, site.elevKm);
-    }
-    return null;
-  };
+  // Resolve Horizon Masks
+  const maskA = useMemo<HorizonMask | null>(() => {
+    return PRECOMPUTED_HORIZONS[siteA.id] || generateCustomHorizon(siteA.lat, siteA.lon, siteA.elevKm);
+  }, [siteA]);
 
-  // Evaluate all scenarios across window
-  const evaluations = useMemo(() => {
-    const map: Record<string, ScenarioEvaluation> = {};
+  const maskB = useMemo<HorizonMask | null>(() => {
+    return PRECOMPUTED_HORIZONS[siteB.id] || generateCustomHorizon(siteB.lat, siteB.lon, siteB.elevKm);
+  }, [siteB]);
 
-    for (const sc of scenarios) {
-      const site = LUNAR_SITES.find((s) => s.id === sc.siteId);
-      const lat = sc.siteId === 'custom' ? sc.customLat : (site?.lat ?? 0);
-      const lon = sc.siteId === 'custom' ? sc.customLon : (site?.lon ?? 0);
-      const elev = sc.siteId === 'custom' ? sc.customElevKm : (site?.elevKm ?? 0);
-      const mask = getScenarioMask(sc);
+  // Scenarios Config
+  const scenarioConfigA: ScenarioConfig = useMemo(() => ({
+    id: 'sc-A',
+    name: siteA.name,
+    siteId: siteA.id,
+    customLat: siteA.lat,
+    customLon: siteA.lon,
+    customElevKm: siteA.elevKm,
+    customName: siteA.name,
+    useTerrain: true,
+  }), [siteA]);
 
-      map[sc.id] = evaluateScenario(
-        sc,
-        lat,
-        lon,
-        elev,
-        mask,
-        windowStartMs,
-        windowEndMs,
-        currentScrubMs,
-        30 * 60 * 1000 // 30 min step
-      );
-    }
+  const scenarioConfigB: ScenarioConfig = useMemo(() => ({
+    id: 'sc-B',
+    name: siteB.name,
+    siteId: siteB.id,
+    customLat: siteB.lat,
+    customLon: siteB.lon,
+    customElevKm: siteB.elevKm,
+    customName: siteB.name,
+    useTerrain: true,
+  }), [siteB]);
 
-    return map;
-  }, [scenarios, windowStartMs, windowEndMs]);
+  // Full Evaluations across window
+  const evaluationA = useMemo(() => {
+    return evaluateScenario(
+      scenarioConfigA,
+      siteA.lat,
+      siteA.lon,
+      siteA.elevKm,
+      maskA,
+      windowStartMs,
+      windowEndMs,
+      currentScrubMs,
+      30 * 60 * 1000
+    );
+  }, [scenarioConfigA, siteA, maskA, windowStartMs, windowEndMs]);
 
-  // Compute live real-time point for each scenario at exact currentScrubMs (60 fps smooth)
-  const currentPoints = useMemo(() => {
-    const map: Record<string, EphemerisPoint> = {};
-    const { sun, earth } = bodyVectors(currentScrubMs);
+  const evaluationB = useMemo(() => {
+    return evaluateScenario(
+      scenarioConfigB,
+      siteB.lat,
+      siteB.lon,
+      siteB.elevKm,
+      maskB,
+      windowStartMs,
+      windowEndMs,
+      currentScrubMs,
+      30 * 60 * 1000
+    );
+  }, [scenarioConfigB, siteB, maskB, windowStartMs, windowEndMs]);
 
-    for (const sc of scenarios) {
-      const site = LUNAR_SITES.find((s) => s.id === sc.siteId);
-      const lat = sc.siteId === 'custom' ? sc.customLat : (site?.lat ?? 0);
-      const lon = sc.siteId === 'custom' ? sc.customLon : (site?.lon ?? 0);
-      const elev = sc.siteId === 'custom' ? sc.customElevKm : (site?.elevKm ?? 0);
-      const mask = sc.useTerrain ? getScenarioMask(sc) : null;
+  // Real-time Moon-fixed Body Vectors at exact currentScrubMs
+  const currentBodyVecs = useMemo(() => {
+    return bodyVectors(currentScrubMs);
+  }, [currentScrubMs]);
 
-      const frame = createLocalFrame(lat, lon, elev);
-      const vis = evaluateVisibilityAtInstant(sun, earth, frame, mask, elev);
+  // Live Topocentric Points at currentScrubMs (60 fps smooth)
+  const currentPointA = useMemo<EphemerisPoint>(() => {
+    const frame = createLocalFrame(siteA.lat, siteA.lon, siteA.elevKm);
+    const vis = evaluateVisibilityAtInstant(currentBodyVecs.sun, currentBodyVecs.earth, frame, maskA, siteA.elevKm);
+    return {
+      timeMs: currentScrubMs,
+      dateIso: new Date(currentScrubMs).toISOString(),
+      sun: vis.sun,
+      earth: vis.earth,
+      isBothUp: vis.isBothUp,
+      horizontalPowerFlux: vis.horizontalPowerFlux,
+      trackingPowerFlux: vis.trackingPowerFlux,
+    };
+  }, [siteA, maskA, currentBodyVecs, currentScrubMs]);
 
-      map[sc.id] = {
-        timeMs: currentScrubMs,
-        dateIso: new Date(currentScrubMs).toISOString(),
-        sun: vis.sun,
-        earth: vis.earth,
-        isBothUp: vis.isBothUp,
-        horizontalPowerFlux: vis.horizontalPowerFlux,
-        trackingPowerFlux: vis.trackingPowerFlux,
-      };
-    }
+  const currentPointB = useMemo<EphemerisPoint>(() => {
+    const frame = createLocalFrame(siteB.lat, siteB.lon, siteB.elevKm);
+    const vis = evaluateVisibilityAtInstant(currentBodyVecs.sun, currentBodyVecs.earth, frame, maskB, siteB.elevKm);
+    return {
+      timeMs: currentScrubMs,
+      dateIso: new Date(currentScrubMs).toISOString(),
+      sun: vis.sun,
+      earth: vis.earth,
+      isBothUp: vis.isBothUp,
+      horizontalPowerFlux: vis.horizontalPowerFlux,
+      trackingPowerFlux: vis.trackingPowerFlux,
+    };
+  }, [siteB, maskB, currentBodyVecs, currentScrubMs]);
 
-    return map;
-  }, [scenarios, currentScrubMs]);
+  // Monte Carlo Assessment for Site A
+  const monteCarloA = useMemo(() => {
+    return runMonteCarloAssessment(siteA, scenarioConfigA, windowStartMs, windowEndMs, 120);
+  }, [siteA, scenarioConfigA, windowStartMs, windowEndMs]);
 
-  // Animation Playback Loop
+  // Slip analysis for Site A
+  const slipCasesA = useMemo(() => {
+    return computeSlipAnalysis(
+      scenarioConfigA,
+      siteA.lat,
+      siteA.lon,
+      siteA.elevKm,
+      maskA,
+      windowStartMs,
+      windowEndMs
+    );
+  }, [scenarioConfigA, siteA, maskA, windowStartMs, windowEndMs]);
+
+  // Alternatives search for Site A
+  const alternativeCandidates = useMemo(() => {
+    if (!showAlternativesModal) return [];
+    return findAlternativeScenarios(
+      scenarioConfigA,
+      siteA,
+      LUNAR_SITES,
+      windowStartMs,
+      windowEndMs - windowStartMs,
+      maskA
+    );
+  }, [showAlternativesModal, scenarioConfigA, siteA, maskA, windowStartMs, windowEndMs]);
+
+  // Animation Simulation Loop
   const lastTickRef = useRef<number>(performance.now());
   useEffect(() => {
     if (!isPlaying) return;
@@ -231,7 +264,6 @@ export const App: React.FC = () => {
       lastTickRef.current = now;
 
       setCurrentScrubMs((prev) => {
-        // Step forward in simulation time: dtSec * playbackSpeed * 1000 ms
         const next = prev + dtSec * playbackSpeed * 60 * 1000;
         if (next >= windowEndMs) {
           setIsPlaying(false);
@@ -247,206 +279,123 @@ export const App: React.FC = () => {
     return () => cancelAnimationFrame(animId);
   }, [isPlaying, playbackSpeed, windowEndMs]);
 
-  // Scenario operations
-  const handleUpdateScenario = (id: string, updated: Partial<ScenarioConfig>) => {
-    setScenarios((prev) =>
-      prev.map((s) => {
-        if (s.id !== id) return s;
-        const newObj = { ...s, ...updated };
-        if (updated.siteId && updated.siteId !== 'custom') {
-          const site = LUNAR_SITES.find((si) => si.id === updated.siteId);
-          if (site) {
-            newObj.customLat = site.lat;
-            newObj.customLon = site.lon;
-            newObj.customElevKm = site.elevKm;
-            newObj.customName = site.name;
-          }
-        }
-        return newObj;
-      })
-    );
-  };
-
-  const handleDuplicateScenario = (sc: ScenarioConfig) => {
-    if (scenarios.length >= 4) return;
-    const nextLetter = String.fromCharCode(65 + scenarios.length);
-    const newId = `sc-${Date.now()}`;
-    const clone: ScenarioConfig = {
-      ...sc,
-      id: newId,
-      name: `Scenario ${nextLetter}: Copy of ${sc.name.split(':')[1] || sc.name}`,
-    };
-    setScenarios((prev) => [...prev, clone]);
-  };
-
-  const handleRemoveScenario = (id: string) => {
-    if (scenarios.length <= 1) return;
-    setScenarios((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  const handleAddScenario = () => {
-    if (scenarios.length >= 4) return;
-    const nextLetter = String.fromCharCode(65 + scenarios.length);
-    const newId = `sc-${Date.now()}`;
-    const availableSites = LUNAR_SITES.filter(
-      (s) => !scenarios.some((sc) => sc.siteId === s.id)
-    );
-    const defaultSite = availableSites[0] || LUNAR_SITES[0];
-
-    const newSc: ScenarioConfig = {
-      id: newId,
-      name: `Scenario ${nextLetter}: ${defaultSite.name.split('(')[0].trim()}`,
-      siteId: defaultSite.id,
-      customLat: defaultSite.lat,
-      customLon: defaultSite.lon,
-      customElevKm: defaultSite.elevKm,
-      customName: defaultSite.name,
-      useTerrain: true,
-    };
-    setScenarios((prev) => [...prev, newSc]);
-  };
-
-  // Slip analysis computation for Scenario 1
-  const slipCases = useMemo(() => {
-    if (!showSlipModal) return [];
-    const sc1 = scenarios[0];
-    const site = LUNAR_SITES.find((s) => s.id === sc1.siteId);
-    const lat = sc1.siteId === 'custom' ? sc1.customLat : (site?.lat ?? 0);
-    const lon = sc1.siteId === 'custom' ? sc1.customLon : (site?.lon ?? 0);
-    const elev = sc1.siteId === 'custom' ? sc1.customElevKm : (site?.elevKm ?? 0);
-    const mask = getScenarioMask(sc1);
-
-    return computeSlipAnalysis(
-      sc1,
-      lat,
-      lon,
-      elev,
-      mask,
-      windowStartMs,
-      windowEndMs
-    );
-  }, [showSlipModal, scenarios, windowStartMs, windowEndMs]);
-
-  // Alternatives search for Scenario 1
-  const alternativeCandidates = useMemo(() => {
-    if (!showAlternativesModal) return [];
-    const sc1 = scenarios[0];
-    const site = LUNAR_SITES.find((s) => s.id === sc1.siteId) || LUNAR_SITES[0];
-    const mask = getScenarioMask(sc1);
-
-    return findAlternativeScenarios(
-      sc1,
-      site,
-      LUNAR_SITES,
-      windowStartMs,
-      windowEndMs - windowStartMs,
-      mask
-    );
-  }, [showAlternativesModal, scenarios, windowStartMs, windowEndMs]);
-
   const handleApplyAlternative = (cand: AlternativeCandidate) => {
     setShowAlternativesModal(false);
     if (cand.type === 'date_shift') {
       setStartDateIso(cand.startDateIso);
     } else {
       const matchSite = LUNAR_SITES.find((s) => s.name === cand.siteName);
-      if (matchSite) {
-        handleUpdateScenario(scenarios[0].id, {
-          siteId: matchSite.id,
-          name: `Scenario A: ${matchSite.name}`,
-        });
-      }
+      if (matchSite) setSiteA(matchSite);
     }
   };
 
-  const handleApplyMapCoordinates = (lat: number, lon: number, name: string) => {
-    handleUpdateScenario(mapTargetScenarioId, {
-      siteId: 'custom',
-      customLat: lat,
-      customLon: lon,
-      customName: name,
-      name: `${scenarios.find((s) => s.id === mapTargetScenarioId)?.name.split(':')[0] || 'Scenario'}: ${name}`,
-    });
+  const handleApplyMapCoords = (lat: number, lon: number, name: string) => {
+    const customSite: Site = {
+      id: `custom_${lat}_${lon}`,
+      name,
+      agency: 'User Custom Target',
+      kind: 'candidate',
+      region: lat < -75 ? 'south_pole' : 'equatorial',
+      lat,
+      lon,
+      elevKm: 0,
+      verified: true,
+      note: 'User designated coordinates on lunar surface.',
+      rockAbundance: 15,
+      thermalInertia: 60,
+      volatileIceScore: lat < -80 ? 75 : 10,
+      isPsrColdTrap: false,
+    };
+
+    if (mapTarget === 'A') setSiteA(customSite);
+    else setSiteB(customSite);
     setShowMapPickerModal(false);
   };
 
   return (
-    <div className="min-h-screen bg-space-950 text-slate-100 flex flex-col pb-28">
-      {/* Header */}
-      <Header
-        mode={mode}
-        onSetMode={setMode}
+    <div className="w-screen h-screen overflow-hidden bg-space-950 text-slate-100 flex flex-col select-none">
+      {/* NASA Mission Operations Header */}
+      <NasaHeader
+        uiMode={uiMode}
+        onSetUIMode={setUIMode}
+        viewMode={viewMode}
+        onSetViewMode={setViewMode}
+        scientificLayer={scientificLayer}
+        onSetScientificLayer={setScientificLayer}
         startDateIso={startDateIso}
         onSetStartDate={setStartDateIso}
         windowDays={windowDays}
         onSetWindowDays={setWindowDays}
-        onAddScenario={handleAddScenario}
-        canAddScenario={scenarios.length < 4}
-        onOpenSlipTable={() => setShowSlipModal(true)}
-        onOpenAlternatives={() => setShowAlternativesModal(true)}
-        onOpenMapPicker={() => {
-          setMapTargetScenarioId(scenarios[0].id);
-          setShowMapPickerModal(true);
-        }}
         onOpenLearnTour={() => setShowLearnTourModal(true)}
-        onOpenExport={() => {
-          setExportScenarioId(scenarios[0].id);
-          setShowExportModal(true);
-        }}
         onShareUrl={handleShareUrl}
       />
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto w-full px-4 pt-6 flex flex-col gap-6 flex-1">
-        {/* Scenarios Grid: Responsive side-by-side comparison */}
-        <div
-          className={`grid gap-6 ${
-            scenarios.length === 1
-              ? 'grid-cols-1'
-              : scenarios.length === 2
-              ? 'grid-cols-1 lg:grid-cols-2'
-              : 'grid-cols-1 lg:grid-cols-2'
-          }`}
-        >
-          {scenarios.map((sc) => {
-            const ev = evaluations[sc.id];
-            const cp = currentPoints[sc.id];
-            if (!ev || !cp) return null;
+      {/* Main Mission Operations Center (Full Viewport with 3D Center & Side Panels) */}
+      <div className="flex-1 w-full flex overflow-hidden relative">
+        {/* Left Side Control Panel (Collapsible) */}
+        <LeftControlPanel
+          siteA={siteA}
+          siteB={siteB}
+          onSelectSiteA={setSiteA}
+          onSelectSiteB={setSiteB}
+          allSites={LUNAR_SITES}
+          isSiteALit={currentPointA.sun.isVisible}
+          isSiteBLit={currentPointB.sun.isVisible}
+          scientificLayer={scientificLayer}
+          onSetScientificLayer={setScientificLayer}
+          onOpenMapPicker={() => {
+            setMapTarget('A');
+            setShowMapPickerModal(true);
+          }}
+        />
 
-            return (
-              <ScenarioCard
-                key={sc.id}
-                scenario={sc}
-                evaluation={ev}
-                currentPoint={cp}
-                sites={LUNAR_SITES}
-                currentScrubMs={currentScrubMs}
-                windowStartMs={windowStartMs}
-                windowEndMs={windowEndMs}
-                mode={mode}
-                onUpdateScenario={(upd) => handleUpdateScenario(sc.id, upd)}
-                onDuplicateScenario={() => handleDuplicateScenario(sc)}
-                onRemoveScenario={() => handleRemoveScenario(sc.id)}
-                onScrub={setCurrentScrubMs}
-                canRemove={scenarios.length > 1}
-              />
-            );
-          })}
+        {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON) */}
+        <div className="flex-1 h-full relative">
+          <CentralLunarViewport3D
+            viewMode={viewMode}
+            scientificLayer={scientificLayer}
+            siteA={siteA}
+            siteB={siteB}
+            currentPointA={currentPointA}
+            currentPointB={currentPointB}
+            allPointsA={evaluationA.points}
+            allPointsB={evaluationB.points}
+            sunVec={currentBodyVecs.sun}
+            earthVec={currentBodyVecs.earth}
+            currentTimeMs={currentScrubMs}
+          />
         </div>
 
-        {/* Side-by-Side Scenario Decision Summary Matrix */}
-        {scenarios.length > 1 && (
-          <ComparisonSummary scenarios={scenarios} evaluations={evaluations} />
-        )}
-      </main>
+        {/* Right Side Telemetry & Feasibility Panel (Collapsible) */}
+        <RightTelemetryPanel
+          uiMode={uiMode}
+          siteA={siteA}
+          siteB={siteB}
+          evaluationA={evaluationA}
+          evaluationB={evaluationB}
+          currentPointA={currentPointA}
+          currentPointB={currentPointB}
+          allPointsA={evaluationA.points}
+          allPointsB={evaluationB.points}
+          maskA={maskA}
+          monteCarloA={monteCarloA}
+          slipCasesA={slipCasesA}
+          onOpenSlipTable={() => setShowSlipModal(true)}
+          onOpenAlternatives={() => setShowAlternativesModal(true)}
+          onOpenExport={() => setShowExportModal(true)}
+        />
+      </div>
 
-      {/* Persistent Bottom Scrubber Bar */}
-      <ScrubberBar
+      {/* Unified NASA Bottom Dock (Fluid Scrubber + UTC Input + Mini Gantt Tracks) */}
+      <NasaTimelineScrubber
         currentScrubMs={currentScrubMs}
         windowStartMs={windowStartMs}
         windowEndMs={windowEndMs}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
+        sunIntervalsA={evaluationA.sunIntervals}
+        earthIntervalsA={evaluationA.earthIntervals}
+        bothUpIntervalsA={evaluationA.bothUpIntervals}
         onTogglePlay={() => setIsPlaying((p) => !p)}
         onSetSpeed={setPlaybackSpeed}
         onScrub={setCurrentScrubMs}
@@ -464,8 +413,8 @@ export const App: React.FC = () => {
       {/* Modals */}
       {showSlipModal && (
         <SlipTable
-          slipCases={slipCases}
-          scenarioName={scenarios[0].name}
+          slipCases={slipCasesA}
+          scenarioName={siteA.name}
           onClose={() => setShowSlipModal(false)}
         />
       )}
@@ -473,7 +422,7 @@ export const App: React.FC = () => {
       {showAlternativesModal && (
         <AlternativesModal
           candidates={alternativeCandidates}
-          currentScenarioName={scenarios[0].name}
+          currentScenarioName={siteA.name}
           onApplyAlternative={handleApplyAlternative}
           onClose={() => setShowAlternativesModal(false)}
         />
@@ -484,7 +433,7 @@ export const App: React.FC = () => {
           <div className="relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-space-900 shadow-2xl p-6 flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h2 className="text-base font-bold text-slate-100 uppercase tracking-wide">
-                Lunar Map Landing Site Picker
+                Pick Coordinates on Lunar Map for Location {mapTarget}
               </h2>
               <button
                 onClick={() => setShowMapPickerModal(false)}
@@ -495,21 +444,15 @@ export const App: React.FC = () => {
             </div>
 
             <MapPicker2D
-              selectedSiteId={scenarios.find((s) => s.id === mapTargetScenarioId)?.siteId ?? ''}
-              currentLat={
-                scenarios.find((s) => s.id === mapTargetScenarioId)?.customLat ?? -89.78
-              }
-              currentLon={
-                scenarios.find((s) => s.id === mapTargetScenarioId)?.customLon ?? 129.5
-              }
+              selectedSiteId={mapTarget === 'A' ? siteA.id : siteB.id}
+              currentLat={mapTarget === 'A' ? siteA.lat : siteB.lat}
+              currentLon={mapTarget === 'A' ? siteA.lon : siteB.lon}
               onSelectSite={(site) => {
-                handleUpdateScenario(mapTargetScenarioId, {
-                  siteId: site.id,
-                  name: `${scenarios.find((s) => s.id === mapTargetScenarioId)?.name.split(':')[0] || 'Scenario'}: ${site.name}`,
-                });
+                if (mapTarget === 'A') setSiteA(site);
+                else setSiteB(site);
                 setShowMapPickerModal(false);
               }}
-              onSelectCoordinates={handleApplyMapCoordinates}
+              onSelectCoordinates={handleApplyMapCoords}
               sites={LUNAR_SITES}
             />
           </div>
@@ -522,11 +465,9 @@ export const App: React.FC = () => {
 
       {showExportModal && (
         <ExportModal
-          scenario={scenarios.find((s) => s.id === exportScenarioId) || scenarios[0]}
-          evaluation={evaluations[exportScenarioId] || evaluations[scenarios[0].id]}
-          site={LUNAR_SITES.find(
-            (s) => s.id === (scenarios.find((sc) => sc.id === exportScenarioId)?.siteId)
-          )}
+          scenario={scenarioConfigA}
+          evaluation={evaluationA}
+          site={siteA}
           onClose={() => setShowExportModal(false)}
         />
       )}

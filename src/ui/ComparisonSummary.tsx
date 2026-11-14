@@ -197,3 +197,4 @@ export const ComparisonSummary: React.FC<ComparisonSummaryProps> = ({
     </div>
   );
 };
+

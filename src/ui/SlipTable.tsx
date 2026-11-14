@@ -156,3 +156,4 @@ export const SlipTable: React.FC<SlipTableProps> = ({
     </div>
   );
 };
+

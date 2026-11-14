@@ -185,3 +185,4 @@ export function getSubBodyCoords(bodyVec: Vector3D): { latDeg: number; lonDeg: n
   if (lonDeg < -180) lonDeg += 360;
   return { latDeg, lonDeg };
 }
+

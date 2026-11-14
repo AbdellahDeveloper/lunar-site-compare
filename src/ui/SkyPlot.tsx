@@ -235,3 +235,4 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
     </div>
   );
 };
+

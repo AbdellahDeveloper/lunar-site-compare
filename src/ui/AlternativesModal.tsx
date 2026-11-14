@@ -161,3 +161,4 @@ export const AlternativesModal: React.FC<AlternativesModalProps> = ({
     </div>
   );
 };
+

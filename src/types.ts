@@ -1,6 +1,10 @@
 export type SiteKind = 'past' | 'planned' | 'candidate';
 export type SiteRegion = 'south_pole' | 'equatorial' | 'farside' | 'mid_latitude';
 
+export type ScientificLayer = 'none' | 'volatiles' | 'thermal' | 'shadow';
+export type ComparisonViewMode = 'overlapped' | 'split';
+export type UIMode = 'simple' | 'detailed';
+
 export interface Site {
   id: string;
   name: string;
@@ -14,6 +18,12 @@ export interface Site {
   note: string;
   targetDate?: string;  // e.g. '2026-11-15'
   hasCustomHorizon?: boolean;
+  
+  // Scientific exploration layers (LRO Diviner & LEND)
+  rockAbundance: number;      // 0-100% surface rockiness / thermal inertia hazard
+  thermalInertia: number;     // J m^-2 K^-1 s^-1/2 (nighttime cooling rate)
+  volatileIceScore: number;   // 0-100% epithermal neutron suppression / water ice index
+  isPsrColdTrap: boolean;     // Permanently Shadowed Region flag
 }
 
 export interface Vector3D {
@@ -151,6 +161,18 @@ export interface SlipCase {
   deltaBothUpHours: number;
   deltaSunPercent: number;
   verdict: Verdict;
+}
+
+export interface MonteCarloResult {
+  trialsCount: number;
+  successProbability: number; // % trials meeting min sunlight requirement
+  dteProbability: number;     // % trials meeting min DTE requirement
+  avgSunlightHours: number;
+  avgDarkHours: number;
+  maxConsecutiveDarkHours: number;
+  darknessHistogram: { binHours: string; count: number }[];
+  riskRating: 'Low' | 'Moderate' | 'High' | 'Severe';
+  recommendation: string;
 }
 
 export type AppMode = 'planner' | 'explorer' | 'learn';

@@ -209,3 +209,4 @@ export const TimelineGantt: React.FC<TimelineGanttProps> = ({
     </div>
   );
 };
+

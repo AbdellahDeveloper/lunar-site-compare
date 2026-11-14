@@ -116,3 +116,4 @@ export function downloadTextFile(filename: string, content: string, mime: string
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+

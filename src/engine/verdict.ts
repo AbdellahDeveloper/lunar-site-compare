@@ -63,3 +63,4 @@ export function evaluateVerdict(metrics: ScenarioMetrics): Verdict {
     operationalSummary,
   };
 }
+
