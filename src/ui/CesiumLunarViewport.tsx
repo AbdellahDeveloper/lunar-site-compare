@@ -818,135 +818,32 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-space-950 select-none">
-      {/* Top NASA Mission Telemetry HUD */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between pointer-events-none gap-3">
-        {/* Left Telemetry Card: Site A */}
-        <div className="pointer-events-auto flex items-center gap-3 bg-space-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-cyan-500/40 shadow-xl shadow-cyan-950/20">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider">
-                {viewMode === 'split' ? 'LOCATION 1 (LEFT)' : 'LOCATION A'}
-              </span>
-            </div>
-            <span className="text-sm font-bold text-slate-100 max-w-[200px] truncate">
-              {siteA.name}
-            </span>
-          </div>
-
-          <div className="h-8 w-px bg-slate-700/60" />
-
-          {/* Power HUD */}
-          <div className="flex flex-col text-xs font-mono">
-            <span className="text-slate-400 text-[10px]">SOLAR POWER</span>
-            <span
-              className={`font-bold flex items-center gap-1 ${
-                currentPointA.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              {currentPointA.sun.isVisible
-                ? `LIT (${currentPointA.sun.elevationDeg.toFixed(1)}°)`
-                : 'SHADOW'}
-            </span>
-          </div>
-
-          <div className="h-8 w-px bg-slate-700/60" />
-
-          {/* DTE Comm HUD */}
-          <div className="flex flex-col text-xs font-mono">
-            <span className="text-slate-400 text-[10px]">EARTH DTE</span>
-            <span
-              className={`font-bold flex items-center gap-1 ${
-                currentPointA.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
-              }`}
-            >
-              <Radio className="w-3.5 h-3.5" />
-              {currentPointA.earth.isVisible
-                ? `LINK (${currentPointA.earth.elevationDeg.toFixed(1)}°)`
-                : 'OCCULTED'}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Telemetry Card: Site B (when comparing) */}
-        {siteB && currentPointB && (
-          <div className="pointer-events-auto flex items-center gap-3 bg-space-900/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-amber-500/40 shadow-xl shadow-amber-950/20">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-xs font-mono font-bold text-amber-300 uppercase tracking-wider">
-                  {viewMode === 'split' ? 'LOCATION 2 (RIGHT)' : 'LOCATION B'}
-                </span>
-              </div>
-              <span className="text-sm font-bold text-slate-100 max-w-[200px] truncate">
-                {siteB.name}
-              </span>
-            </div>
-
-            <div className="h-8 w-px bg-slate-700/60" />
-
-            {/* Power HUD */}
-            <div className="flex flex-col text-xs font-mono">
-              <span className="text-slate-400 text-[10px]">SOLAR POWER</span>
-              <span
-                className={`font-bold flex items-center gap-1 ${
-                  currentPointB.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5" />
-                {currentPointB.sun.isVisible
-                  ? `LIT (${currentPointB.sun.elevationDeg.toFixed(1)}°)`
-                  : 'SHADOW'}
-              </span>
-            </div>
-
-            <div className="h-8 w-px bg-slate-700/60" />
-
-            {/* DTE Comm HUD */}
-            <div className="flex flex-col text-xs font-mono">
-              <span className="text-slate-400 text-[10px]">EARTH DTE</span>
-              <span
-                className={`font-bold flex items-center gap-1 ${
-                  currentPointB.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
-                }`}
-              >
-                <Radio className="w-3.5 h-3.5" />
-                {currentPointB.earth.isVisible
-                  ? `LINK (${currentPointB.earth.elevationDeg.toFixed(1)}°)`
-                  : 'OCCULTED'}
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* Main 3D Cesium Viewports */}
       <div className="w-full flex-1 flex relative">
         {viewMode === 'overlapped' ? (
-          // OVERLAPPED MODE: Single Wide Cesium Viewer
+          // OVERLAPPED MODE: Single Wide Cesium Viewer (100% clean, unobstructed lunar view)
           <div ref={containerRef} className="w-full h-full block" />
         ) : (
           // SPLIT MODE: Dual Cesium Viewers side-by-side
           <div className="w-full h-full flex divide-x divide-slate-800">
             <div className="relative w-1/2 h-full flex flex-col">
-              <div className="absolute top-16 left-4 z-10 px-2.5 py-1 rounded-md bg-space-950/80 border border-cyan-500/40 text-[11px] font-mono text-cyan-300 font-bold">
-                VIEWPORT 1: {siteA.name}
+              <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-cyan-500/40 text-[11px] font-mono text-cyan-300 font-bold shadow-md">
+                LOCATION A: {siteA.name.split('(')[0].trim()}
               </div>
               <div ref={containerRef} className="w-full h-full block" />
             </div>
 
             <div className="relative w-1/2 h-full flex flex-col">
-              <div className="absolute top-16 left-4 z-10 px-2.5 py-1 rounded-md bg-space-950/80 border border-amber-500/40 text-[11px] font-mono text-amber-300 font-bold">
-                VIEWPORT 2: {siteB?.name ?? 'Site B'}
+              <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-amber-500/40 text-[11px] font-mono text-amber-300 font-bold shadow-md">
+                LOCATION B: {siteB ? siteB.name.split('(')[0].trim() : 'Site B'}
               </div>
               <div ref={containerBRef} className="w-full h-full block" />
             </div>
           </div>
         )}
 
-        {/* Floating NASA Camera HUD & Zoom Controls Widget (Right Side of Viewport) */}
-        <div className="absolute right-4 top-20 z-20 flex flex-col items-end gap-2 font-mono">
+        {/* Floating NASA Camera HUD & Zoom Controls Widget (Right Corner of Viewport) */}
+        <div className="absolute right-4 top-4 z-20 flex flex-col items-end gap-2 font-mono">
           {/* Live Altitude Telemetry Badge */}
           <div className="bg-space-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700/80 shadow-xl flex flex-col items-end text-right">
             <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-wider">

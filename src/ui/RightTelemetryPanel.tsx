@@ -149,6 +149,97 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             </Card>
           </div>
 
+          {/* Real-Time Live Telemetry (Solar Power & Earth DTE Status) */}
+          <div className="flex flex-col gap-2 font-mono">
+            {/* Site A */}
+            <div className="flex items-center justify-between p-2.5 bg-space-900/95 rounded-xl border border-cyan-500/40 text-xs shadow-md">
+              <div className="flex flex-col min-w-0 max-w-[130px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                  <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">
+                    SITE A
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-slate-100 truncate">
+                  {siteA.name.split('(')[0].trim()}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px]">
+                <div className="flex flex-col text-right">
+                  <span className="text-[9px] text-slate-500 uppercase">SOLAR</span>
+                  <span
+                    className={`font-bold flex items-center justify-end gap-1 ${
+                      currentPointA.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
+                    }`}
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>{currentPointA.sun.isVisible ? `${currentPointA.sun.elevationDeg.toFixed(1)}°` : 'SHD'}</span>
+                  </span>
+                </div>
+
+                <div className="h-6 w-px bg-slate-800" />
+
+                <div className="flex flex-col text-right">
+                  <span className="text-[9px] text-slate-500 uppercase">EARTH DTE</span>
+                  <span
+                    className={`font-bold flex items-center justify-end gap-1 ${
+                      currentPointA.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
+                    }`}
+                  >
+                    <Radio className="w-3 h-3" />
+                    <span>{currentPointA.earth.isVisible ? `${currentPointA.earth.elevationDeg.toFixed(1)}°` : 'OCC'}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Site B (when comparing) */}
+            {siteB && currentPointB && (
+              <div className="flex items-center justify-between p-2.5 bg-space-900/95 rounded-xl border border-amber-500/40 text-xs shadow-md">
+                <div className="flex flex-col min-w-0 max-w-[130px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                      SITE B
+                    </span>
+                  </div>
+                  <span className="text-xs font-bold text-slate-100 truncate">
+                    {siteB.name.split('(')[0].trim()}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-[11px]">
+                  <div className="flex flex-col text-right">
+                    <span className="text-[9px] text-slate-500 uppercase">SOLAR</span>
+                    <span
+                      className={`font-bold flex items-center justify-end gap-1 ${
+                        currentPointB.sun.isVisible ? 'text-emerald-400' : 'text-red-400'
+                      }`}
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>{currentPointB.sun.isVisible ? `${currentPointB.sun.elevationDeg.toFixed(1)}°` : 'SHD'}</span>
+                    </span>
+                  </div>
+
+                  <div className="h-6 w-px bg-slate-800" />
+
+                  <div className="flex flex-col text-right">
+                    <span className="text-[9px] text-slate-500 uppercase">EARTH DTE</span>
+                    <span
+                      className={`font-bold flex items-center justify-end gap-1 ${
+                        currentPointB.earth.isVisible ? 'text-cyan-400' : 'text-slate-400'
+                      }`}
+                    >
+                      <Radio className="w-3 h-3" />
+                      <span>{currentPointB.earth.isVisible ? `${currentPointB.earth.elevationDeg.toFixed(1)}°` : 'OCC'}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Colorful Side-by-Side A/B Comparison Scorecard using shadcn Card */}
           {evaluationB && (
             <Card className="p-3 bg-space-900/95 border-slate-800 flex flex-col gap-2.5 text-xs font-mono">
