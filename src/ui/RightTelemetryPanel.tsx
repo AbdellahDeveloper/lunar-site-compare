@@ -695,12 +695,16 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
               Navigation Shortcuts
             </span>
             <div className="flex items-center justify-between text-slate-400">
-              <span>Zoom In / Out:</span>
-              <span className="text-slate-200 font-bold">2-Finger / Wheel / +/-</span>
+              <span>Pan View:</span>
+              <span className="text-cyan-300 font-bold">Shift + Move / Drag</span>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Trackball Orbit:</span>
               <span className="text-slate-200 font-bold">Left Drag (0 Deadzone)</span>
+            </div>
+            <div className="flex items-center justify-between text-slate-400">
+              <span>Zoom In / Out:</span>
+              <span className="text-slate-200 font-bold">2-Finger / Wheel / +/-</span>
             </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Focus Crater:</span>

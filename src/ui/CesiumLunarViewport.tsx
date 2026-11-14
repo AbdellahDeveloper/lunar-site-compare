@@ -290,7 +290,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
     // --- Direct High-Precision Trackball Orbit & Drag Controller (Zero Deadzone) ---
     let isDragging = false;
-    let dragMode: 'orbit' | 'zoom' = 'orbit';
+    let dragMode: 'orbit' | 'zoom' | 'pan' = 'orbit';
     let lastX = 0;
     let lastY = 0;
     let activePointerId = -1;
@@ -316,8 +316,17 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       if (viewer.isDestroyed()) return;
 
       const camera = viewer.scene.camera;
-      camera.rotate(camera.up, -velX * 0.035);
-      camera.rotate(camera.right, -velY * 0.035);
+      if (dragMode === 'pan') {
+        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 0.25;
+        if (velX > 0) camera.moveLeft(velX * panSpeed);
+        else if (velX < 0) camera.moveRight(-velX * panSpeed);
+        if (velY > 0) camera.moveUp(velY * panSpeed);
+        else if (velY < 0) camera.moveDown(-velY * panSpeed);
+      } else {
+        camera.rotate(camera.up, -velX * 0.035);
+        camera.rotate(camera.right, -velY * 0.035);
+      }
       viewer.scene.requestRender();
 
       velX *= 0.91; // Smooth aerospace friction
@@ -337,7 +346,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       lastX = e.clientX;
       lastY = e.clientY;
       activePointerId = e.pointerId;
-      dragMode = e.button === 2 ? 'zoom' : 'orbit';
+      const isPan = e.shiftKey || e.button === 1;
+      dragMode = isPan ? 'pan' : e.button === 2 ? 'zoom' : 'orbit';
       lastMoveTime = performance.now();
       velX = 0;
       velY = 0;
@@ -369,7 +379,21 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       const scene = viewer.scene;
       const camera = scene.camera;
 
-      if (dragMode === 'zoom') {
+      const isPan = e.shiftKey || dragMode === 'pan';
+
+      if (isPan) {
+        // Shift + Drag Pan Move across the lunar surface
+        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 1.15;
+
+        if (dx > 0) camera.moveLeft(dx * panSpeed);
+        else if (dx < 0) camera.moveRight(-dx * panSpeed);
+
+        if (dy > 0) camera.moveUp(dy * panSpeed);
+        else if (dy < 0) camera.moveDown(-dy * panSpeed);
+
+        canvas.style.cursor = 'grabbing';
+      } else if (dragMode === 'zoom') {
         // Right-drag zoom
         const currentHeight = camera.positionCartographic?.height || 1000000;
         const zoomDelta = -dy * 0.004;
@@ -403,12 +427,69 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           canvas.releasePointerCapture(e.pointerId);
         } catch {}
 
+        canvas.style.cursor = e.shiftKey ? 'grab' : '';
+
         // Launch smooth glide if released with motion
-        if (dragMode === 'orbit' && Math.hypot(velX, velY) > 0.06) {
+        if ((dragMode === 'orbit' || dragMode === 'pan') && Math.hypot(velX, velY) > 0.06) {
           momentumAnimId = requestAnimationFrame(applyInertia);
         }
       }
     };
+
+    // Hover Pan Move for Shift + Mouse Move (trackpad & mouse navigation)
+    let hoverLastX = 0;
+    let hoverLastY = 0;
+
+    const handleHoverMove = (e: MouseEvent) => {
+      if (isDragging) return;
+      if (e.shiftKey) {
+        canvas.style.cursor = 'grab';
+        const hdx = e.clientX - hoverLastX;
+        const hdy = e.clientY - hoverLastY;
+        hoverLastX = e.clientX;
+        hoverLastY = e.clientY;
+
+        // If mouse is moving while Shift is held down: pan camera
+        if (Math.abs(hdx) > 0 || Math.abs(hdy) > 0) {
+          notifyInteraction();
+          const camera = viewer.scene.camera;
+          const currentHeight = camera.positionCartographic?.height || 1000000;
+          const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 1.15;
+
+          if (hdx > 0) camera.moveLeft(hdx * panSpeed);
+          else if (hdx < 0) camera.moveRight(-hdx * panSpeed);
+
+          if (hdy > 0) camera.moveUp(hdy * panSpeed);
+          else if (hdy < 0) camera.moveDown(-hdy * panSpeed);
+
+          viewer.scene.requestRender();
+        }
+      } else {
+        hoverLastX = e.clientX;
+        hoverLastY = e.clientY;
+        if (canvas.style.cursor === 'grab') {
+          canvas.style.cursor = '';
+        }
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (canvas.style.cursor === 'grab') {
+        canvas.style.cursor = '';
+      }
+    };
+
+    const handleShiftKey = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        if (e.type === 'keydown') {
+          canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+        } else {
+          canvas.style.cursor = '';
+        }
+      }
+    };
+    window.addEventListener('keydown', handleShiftKey);
+    window.addEventListener('keyup', handleShiftKey);
 
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -602,6 +683,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: true });
     canvas.addEventListener('dblclick', handleDoubleClick);
+    canvas.addEventListener('mousemove', handleHoverMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
 
     // Listen to camera movements to update altitude HUD
     viewer.camera.changed.addEventListener(() => {
@@ -1437,12 +1520,12 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
           {/* Mouse & Trackpad Navigation Quick Guide Pill */}
           <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-slate-800 text-[10px] text-slate-300 shadow-md">
-            <span className="text-cyan-400 font-semibold">2-Finger / Wheel:</span>
-            <span>Zoom</span>
+            <span className="text-cyan-400 font-semibold">Shift + Move:</span>
+            <span>Pan</span>
             <span className="text-slate-600">•</span>
             <span>Drag: Orbit</span>
             <span className="text-slate-600">•</span>
-            <span>Dbl-Click: Focus</span>
+            <span>Wheel: Zoom</span>
           </div>
         </div>
       </div>
