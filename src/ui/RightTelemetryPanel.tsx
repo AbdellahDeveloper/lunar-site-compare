@@ -652,25 +652,39 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             </div>
           </Card>
 
-          {/* 4. 3D Scene Celestial Legend */}
+          {/* 4. 3D Scene Celestial & Surface Lighting Legend */}
           <Card className="p-3 bg-space-900/90 border-slate-800 flex flex-col gap-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Celestial Models
+              3D Scene Lighting & Models
             </span>
             <div className="flex flex-col gap-2 text-xs">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-amber-300">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                  <span>Cesium Sun Model</span>
+                  <span>Sunlight Swath (Gold)</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Directional</span>
+                <span className="text-[10px] text-slate-500">Solar Grazing Swath</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-cyan-300">
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50" />
-                  <span>Cesium Earth Model</span>
+                  <span>Earth Direct Comm (Cyan)</span>
                 </span>
-                <span className="text-[10px] text-slate-500">Libration</span>
+                <span className="text-[10px] text-slate-500">Line-of-Sight Beam</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-white">
+                  <span className="w-2.5 h-2.5 rounded-full bg-white shadow-sm shadow-white/80" />
+                  <span>Surface Point Light</span>
+                </span>
+                <span className="text-[10px] text-slate-500">Active Beacon</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-slate-400">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-600 shadow-sm" />
+                  <span>Shadow / Occulted</span>
+                </span>
+                <span className="text-[10px] text-slate-500">Dormant Mode</span>
               </div>
             </div>
           </Card>

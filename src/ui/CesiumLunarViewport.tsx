@@ -74,6 +74,89 @@ function createEarthCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
+// Procedural point light source canvas with radiant corona & diffraction spikes
+function createPointLightCanvas(mode: 'dual' | 'sun' | 'earth' | 'dormant'): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const cx = 64;
+  const cy = 64;
+
+  if (mode === 'dual') {
+    // Both Sun (Gold) and Earth (Cyan) active: brilliant energetic fusion
+    const grad = ctx.createRadialGradient(cx, cy, 3, cx, cy, 60);
+    grad.addColorStop(0, '#ffffff'); // blinding hot center
+    grad.addColorStop(0.2, '#fef08a'); // golden solar inner halo
+    grad.addColorStop(0.5, 'rgba(34, 211, 238, 0.7)'); // cyan comms mid-halo
+    grad.addColorStop(0.85, 'rgba(6, 182, 212, 0.25)');
+    grad.addColorStop(1, 'rgba(6, 182, 212, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4-point star specular flare spikes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 32, cy); ctx.lineTo(cx + 32, cy);
+    ctx.moveTo(cx, cy - 32); ctx.lineTo(cx, cy + 32);
+    ctx.stroke();
+  } else if (mode === 'sun') {
+    // Sun LIT: Warm Radiant Gold / Amber
+    const grad = ctx.createRadialGradient(cx, cy, 3, cx, cy, 54);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, '#fbbf24');
+    grad.addColorStop(0.65, 'rgba(245, 158, 11, 0.6)');
+    grad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Specular flare
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.85)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(cx - 26, cy); ctx.lineTo(cx + 26, cy);
+    ctx.moveTo(cx, cy - 26); ctx.lineTo(cx, cy + 26);
+    ctx.stroke();
+  } else if (mode === 'earth') {
+    // Earth LINK: Vibrant Electric Sky Blue / Cyan
+    const grad = ctx.createRadialGradient(cx, cy, 3, cx, cy, 54);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, '#38bdf8');
+    grad.addColorStop(0.65, 'rgba(34, 211, 238, 0.6)');
+    grad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Concentric radar wave ring
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    // Dormant: In Shadow & Radio Blackout
+    const grad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 32);
+    grad.addColorStop(0, '#cbd5e1');
+    grad.addColorStop(0.4, 'rgba(100, 116, 139, 0.45)');
+    grad.addColorStop(1, 'rgba(100, 116, 139, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 32, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return canvas;
+}
+
 export interface CesiumViewportHandle {
   flyToSouthPole: () => void;
   flyToSiteA: () => void;
@@ -140,6 +223,20 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   // Procedural celestial glow textures
   const sunCanvasRef = useRef<HTMLCanvasElement>(createSunCanvas());
   const earthCanvasRef = useRef<HTMLCanvasElement>(createEarthCanvas());
+
+  // Dynamic Ephemeris points refs for instantaneous 60fps callback properties
+  const currentPointARef = useRef<EphemerisPoint>(currentPointA);
+  currentPointARef.current = currentPointA;
+  const currentPointBRef = useRef<EphemerisPoint | undefined>(currentPointB);
+  currentPointBRef.current = currentPointB;
+
+  // Procedural point light textures
+  const pointLightTexturesRef = useRef({
+    dual: createPointLightCanvas('dual'),
+    sun: createPointLightCanvas('sun'),
+    earth: createPointLightCanvas('earth'),
+    dormant: createPointLightCanvas('dormant'),
+  });
 
   // Initialize Cesium with Moon Ellipsoid
   const createCesiumMoonViewer = (
@@ -602,6 +699,16 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     }
   }, [sunVec, earthVec, viewMode]);
 
+  // Keep point light states and directional swaths reactive at 60fps
+  useEffect(() => {
+    currentPointARef.current = currentPointA;
+    currentPointBRef.current = currentPointB;
+    viewerARef.current?.scene.requestRender();
+    if (viewerBRef.current) {
+      viewerBRef.current.scene.requestRender();
+    }
+  }, [currentPointA, currentPointB, currentTimeMs]);
+
   // Update Entities (Sun Model, Earth Model, Site Pins, Laser Sightlines, Trajectories)
   const updateViewerEntities = (
     viewer: Cesium.Viewer | null,
@@ -695,25 +802,145 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
     });
 
-    // 3. Site A Landing Pin
+    // 3. Site A: Dynamic Physical Lights on the Moon (Replacing static point marker)
+
+    // 3a. Directional Solar Illumination Light Swath (Represents where sunlight is falling)
+    viewer.entities.add({
+      id: 'site_a_sun_light_swath',
+      name: `${siteA.name} Solar Illumination`,
+      position: siteAPos,
+      ellipse: {
+        semiMajorAxis: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt || !pt.sun.isVisible) return 0.1;
+          const elev = Math.max(0.5, pt.sun.elevationDeg);
+          // Low grazing sunlight casts long grazing swaths across ridges
+          const grazingStretch = Math.min(38000, 16000 / Math.tan(Cesium.Math.toRadians(Math.max(0.8, elev))));
+          return Math.max(14000, grazingStretch);
+        }, false),
+        semiMinorAxis: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt || !pt.sun.isVisible) return 0.1;
+          return 7500;
+        }, false),
+        rotation: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return 0;
+          return Cesium.Math.toRadians(360 - pt.sun.azimuthDeg);
+        }, false),
+        material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.42)'),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#f59e0b'),
+        outlineWidth: 1.5,
+      },
+    });
+
+    // 3b. Directional Direct-to-Earth Comm Light Swath (Represents direct comm corridor)
+    viewer.entities.add({
+      id: 'site_a_earth_comm_swath',
+      name: `${siteA.name} Earth Direct Link`,
+      position: siteAPos,
+      ellipse: {
+        semiMajorAxis: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt || !pt.earth.isVisible) return 0.1;
+          return 26000;
+        }, false),
+        semiMinorAxis: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt || !pt.earth.isVisible) return 0.1;
+          return 9000;
+        }, false),
+        rotation: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return 0;
+          return Cesium.Math.toRadians(360 - pt.earth.azimuthDeg);
+        }, false),
+        material: Cesium.Color.fromCssColorString('rgba(34, 211, 238, 0.40)'),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
+        outlineWidth: 1.5,
+      },
+    });
+
+    // 3c. Site A Point Light Beacon (Glowing Physical Light Source on the Surface)
     viewer.entities.add({
       id: 'site_a_pin',
-      name: primarySite.name,
+      name: siteA.name,
       position: siteAPos,
+      billboard: {
+        image: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return pointLightTexturesRef.current.dormant;
+          if (pt.sun.isVisible && pt.earth.isVisible) return pointLightTexturesRef.current.dual;
+          if (pt.sun.isVisible) return pointLightTexturesRef.current.sun;
+          if (pt.earth.isVisible) return pointLightTexturesRef.current.earth;
+          return pointLightTexturesRef.current.dormant;
+        }, false),
+        width: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return 20;
+          if (pt.sun.isVisible && pt.earth.isVisible) return 42;
+          if (pt.sun.isVisible || pt.earth.isVisible) return 35;
+          return 20;
+        }, false),
+        height: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return 20;
+          if (pt.sun.isVisible && pt.earth.isVisible) return 42;
+          if (pt.sun.isVisible || pt.earth.isVisible) return 35;
+          return 20;
+        }, false),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
       point: {
-        pixelSize: 13,
-        color: Cesium.Color.fromCssColorString('#38bdf8'),
-        outlineColor: Cesium.Color.WHITE,
-        outlineWidth: 2.5,
+        pixelSize: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return 6;
+          if (pt.sun.isVisible || pt.earth.isVisible) return 9;
+          return 5;
+        }, false),
+        color: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return Cesium.Color.fromCssColorString('#64748b');
+          if (pt.sun.isVisible && pt.earth.isVisible) return Cesium.Color.WHITE;
+          if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#fef08a');
+          if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#a5f3fc');
+          return Cesium.Color.fromCssColorString('#64748b');
+        }, false),
+        outlineColor: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return Cesium.Color.BLACK;
+          if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#f59e0b');
+          if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#0284c7');
+          return Cesium.Color.BLACK;
+        }, false),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
       label: {
-        text: primarySite.name.split('(')[0].trim(),
+        text: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          const siteName = siteA.name.split('(')[0].trim();
+          if (!pt) return siteName;
+          const sunTag = pt.sun.isVisible ? 'LIT' : 'SHADOW';
+          const earthTag = pt.earth.isVisible ? 'LINK' : 'OCC';
+          return `${siteName} [${sunTag} | ${earthTag}]`;
+        }, false),
         font: 'bold 11px Inter, sans-serif',
-        fillColor: Cesium.Color.fromCssColorString('#38bdf8'),
+        fillColor: new Cesium.CallbackProperty(() => {
+          const pt = currentPointARef.current;
+          if (!pt) return Cesium.Color.fromCssColorString('#38bdf8');
+          if (pt.sun.isVisible && pt.earth.isVisible) return Cesium.Color.fromCssColorString('#67e8f9');
+          if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#fde047');
+          if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#38bdf8');
+          return Cesium.Color.fromCssColorString('#94a3b8');
+        }, false),
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 2,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset: new Cesium.Cartesian2(0, -18),
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -20),
       },
     });
 
@@ -723,7 +950,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       show: showSightlines,
       polyline: {
         positions: new Cesium.CallbackProperty(() => [siteAPos, sunPosRef.current], false),
-        width: 2.5,
+        width: new Cesium.CallbackProperty(() => (currentPointARef.current?.sun.isVisible ? 2.5 : 0.8), false),
         material: new Cesium.PolylineGlowMaterialProperty({
           glowPower: 0.3,
           color: Cesium.Color.fromCssColorString('#f59e0b'),
@@ -736,7 +963,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       show: showSightlines,
       polyline: {
         positions: new Cesium.CallbackProperty(() => [siteAPos, earthPosRef.current], false),
-        width: 2.5,
+        width: new Cesium.CallbackProperty(() => (currentPointARef.current?.earth.isVisible ? 2.5 : 0.8), false),
         material: new Cesium.PolylineGlowMaterialProperty({
           glowPower: 0.3,
           color: Cesium.Color.fromCssColorString('#06b6d4'),
@@ -744,42 +971,162 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
     });
 
-    // 5. Site B Landing Pin and Rays (if available)
+    // 5. Site B: Dynamic Physical Lights on the Moon (if comparing)
     if (secondarySite) {
+      const siteBTarget = secondarySite.id === siteA.id ? primarySite : secondarySite;
       const siteBPos = Cesium.Cartesian3.fromDegrees(
-        secondarySite.lon,
-        secondarySite.lat,
-        secondarySite.elevKm * 1000,
+        siteBTarget.lon,
+        siteBTarget.lat,
+        siteBTarget.elevKm * 1000,
         moon
       );
 
+      // 5a. Site B Directional Solar Illumination Light Swath
       viewer.entities.add({
-        id: 'site_b_pin',
-        name: secondarySite.name,
+        id: 'site_b_sun_light_swath',
+        name: `${siteBTarget.name} Solar Illumination`,
         position: siteBPos,
-        point: {
-          pixelSize: 13,
-          color: Cesium.Color.fromCssColorString('#f59e0b'),
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 2.5,
-        },
-        label: {
-          text: secondarySite.name.split('(')[0].trim(),
-          font: 'bold 11px Inter, sans-serif',
-          fillColor: Cesium.Color.fromCssColorString('#f59e0b'),
-          outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
-          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-          pixelOffset: new Cesium.Cartesian2(0, -18),
+        ellipse: {
+          semiMajorAxis: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt || !pt.sun.isVisible) return 0.1;
+            const elev = Math.max(0.5, pt.sun.elevationDeg);
+            const grazingStretch = Math.min(38000, 16000 / Math.tan(Cesium.Math.toRadians(Math.max(0.8, elev))));
+            return Math.max(14000, grazingStretch);
+          }, false),
+          semiMinorAxis: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt || !pt.sun.isVisible) return 0.1;
+            return 7500;
+          }, false),
+          rotation: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return 0;
+            return Cesium.Math.toRadians(360 - pt.sun.azimuthDeg);
+          }, false),
+          material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.42)'),
+          outline: true,
+          outlineColor: Cesium.Color.fromCssColorString('#f59e0b'),
+          outlineWidth: 1.5,
         },
       });
 
+      // 5b. Site B Directional Direct-to-Earth Comm Light Swath
+      viewer.entities.add({
+        id: 'site_b_earth_comm_swath',
+        name: `${siteBTarget.name} Earth Direct Link`,
+        position: siteBPos,
+        ellipse: {
+          semiMajorAxis: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt || !pt.earth.isVisible) return 0.1;
+            return 26000;
+          }, false),
+          semiMinorAxis: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt || !pt.earth.isVisible) return 0.1;
+            return 9000;
+          }, false),
+          rotation: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return 0;
+            return Cesium.Math.toRadians(360 - pt.earth.azimuthDeg);
+          }, false),
+          material: Cesium.Color.fromCssColorString('rgba(34, 211, 238, 0.40)'),
+          outline: true,
+          outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
+          outlineWidth: 1.5,
+        },
+      });
+
+      // 5c. Site B Point Light Beacon
+      viewer.entities.add({
+        id: 'site_b_pin',
+        name: siteBTarget.name,
+        position: siteBPos,
+        billboard: {
+          image: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return pointLightTexturesRef.current.dormant;
+            if (pt.sun.isVisible && pt.earth.isVisible) return pointLightTexturesRef.current.dual;
+            if (pt.sun.isVisible) return pointLightTexturesRef.current.sun;
+            if (pt.earth.isVisible) return pointLightTexturesRef.current.earth;
+            return pointLightTexturesRef.current.dormant;
+          }, false),
+          width: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return 20;
+            if (pt.sun.isVisible && pt.earth.isVisible) return 42;
+            if (pt.sun.isVisible || pt.earth.isVisible) return 35;
+            return 20;
+          }, false),
+          height: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return 20;
+            if (pt.sun.isVisible && pt.earth.isVisible) return 42;
+            if (pt.sun.isVisible || pt.earth.isVisible) return 35;
+            return 20;
+          }, false),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        point: {
+          pixelSize: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return 6;
+            if (pt.sun.isVisible || pt.earth.isVisible) return 9;
+            return 5;
+          }, false),
+          color: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return Cesium.Color.fromCssColorString('#64748b');
+            if (pt.sun.isVisible && pt.earth.isVisible) return Cesium.Color.WHITE;
+            if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#fef08a');
+            if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#a5f3fc');
+            return Cesium.Color.fromCssColorString('#64748b');
+          }, false),
+          outlineColor: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return Cesium.Color.BLACK;
+            if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#f59e0b');
+            if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#0284c7');
+            return Cesium.Color.BLACK;
+          }, false),
+          outlineWidth: 2,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            const siteName = siteBTarget.name.split('(')[0].trim();
+            if (!pt) return siteName;
+            const sunTag = pt.sun.isVisible ? 'LIT' : 'SHADOW';
+            const earthTag = pt.earth.isVisible ? 'LINK' : 'OCC';
+            return `${siteName} [${sunTag} | ${earthTag}]`;
+          }, false),
+          font: 'bold 11px Inter, sans-serif',
+          fillColor: new Cesium.CallbackProperty(() => {
+            const pt = currentPointBRef.current;
+            if (!pt) return Cesium.Color.fromCssColorString('#f59e0b');
+            if (pt.sun.isVisible && pt.earth.isVisible) return Cesium.Color.fromCssColorString('#fbbf24');
+            if (pt.sun.isVisible) return Cesium.Color.fromCssColorString('#fde047');
+            if (pt.earth.isVisible) return Cesium.Color.fromCssColorString('#38bdf8');
+            return Cesium.Color.fromCssColorString('#94a3b8');
+          }, false),
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -20),
+        },
+      });
+
+      // 5d. Directional Laser Rays from Site B
       viewer.entities.add({
         id: 'ray_sun_b',
         show: showSightlines,
         polyline: {
           positions: new Cesium.CallbackProperty(() => [siteBPos, sunPosRef.current], false),
-          width: 2.0,
+          width: new Cesium.CallbackProperty(() => (currentPointBRef.current?.sun.isVisible ? 2.0 : 0.8), false),
           material: new Cesium.PolylineGlowMaterialProperty({
             glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#f59e0b'),
@@ -792,7 +1139,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         show: showSightlines,
         polyline: {
           positions: new Cesium.CallbackProperty(() => [siteBPos, earthPosRef.current], false),
-          width: 2.0,
+          width: new Cesium.CallbackProperty(() => (currentPointBRef.current?.earth.isVisible ? 2.0 : 0.8), false),
           material: new Cesium.PolylineGlowMaterialProperty({
             glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#06b6d4'),
