@@ -172,14 +172,15 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     ssc.inertiaZoom = 0.5;
     ssc.inertiaSpin = 0.5;
 
-    // Use Cesium native handlers for Right-Drag zoom and Touch Pinch
+    // Use Cesium native handlers for Right-Drag zoom
     ssc.zoomEventTypes = [
       Cesium.CameraEventType.RIGHT_DRAG,
-      Cesium.CameraEventType.PINCH,
     ];
 
     // Track user interaction to seamlessly yield turntable rotation
     const canvas = viewer.canvas;
+    canvas.style.touchAction = 'none';
+
     const notifyInteraction = () => {
       isInteractingRef.current = true;
       if (interactionTimeoutRef.current) clearTimeout(interactionTimeoutRef.current);
@@ -188,7 +189,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       }, 3000);
     };
 
-    // Universal cursor-centric mouse wheel / trackpad zoom (Google Earth / CAD standard)
+    // Universal cursor-centric mouse wheel & two-finger trackpad pinch zoom
     const handleCanvasWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (viewer.isDestroyed()) return;
@@ -200,11 +201,13 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       const rect = canvas.getBoundingClientRect();
       const mousePos = new Cesium.Cartesian2(e.clientX - rect.left, e.clientY - rect.top);
 
-      // Normalize wheel delta across mice, trackpads, and operating systems
+      // Distinguish two-finger trackpad pinch (ctrlKey is true) from standard wheel scroll
+      const isTrackpadPinch = e.ctrlKey;
       const rawDelta = e.deltaY;
       const clampedDelta = Math.sign(rawDelta) * Math.min(Math.abs(rawDelta), 100);
+      const sensitivity = isTrackpadPinch ? 0.012 : 0.0022;
       // factor < 1.0 zooms in, factor > 1.0 zooms out
-      const factor = Math.exp(clampedDelta * 0.0022);
+      const factor = Math.exp(clampedDelta * sensitivity);
 
       // Raycast against Moon ellipsoid to find exact lunar terrain point under cursor
       const ray = camera.getPickRay(mousePos);
@@ -222,7 +225,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
         // Zooming IN directly toward the crater or surface feature under the cursor
         const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
         const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
-        if (currentHeight > 500) {
+        if (currentHeight > 400) {
           const moveDistance = distanceToTarget * (1.0 - factor);
           Cesium.Cartesian3.normalize(toTarget, toTarget);
           camera.move(toTarget, moveDistance);
@@ -230,19 +233,111 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       } else {
         // Zooming OUT, or zooming when cursor is in space around the Moon
         if (factor < 1.0) {
-          if (currentHeight > 500) {
-            const moveAmount = Math.max(300, currentHeight * (1.0 - factor));
+          if (currentHeight > 400) {
+            const moveAmount = Math.max(250, currentHeight * (1.0 - factor));
             camera.zoomIn(moveAmount);
           }
         } else {
-          if (currentHeight < 50000000) {
-            const moveAmount = Math.max(600, currentHeight * (factor - 1.0));
+          if (currentHeight < 55000000) {
+            const moveAmount = Math.max(500, currentHeight * (factor - 1.0));
             camera.zoomOut(moveAmount);
           }
         }
       }
 
       scene.requestRender();
+    };
+
+    // --- Two-Finger Touch Pinch-to-Zoom (Touchscreens, Tablets, Mobile) ---
+    let lastPinchDist = 0;
+
+    const getTouchDist = (t0: Touch, t1: Touch) => {
+      return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    };
+
+    const getTouchMidpoint = (t0: Touch, t1: Touch) => {
+      return {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2,
+      };
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        notifyInteraction();
+        const dist = getTouchDist(e.touches[0], e.touches[1]);
+        lastPinchDist = dist;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        if (viewer.isDestroyed()) return;
+        notifyInteraction();
+
+        const dist = getTouchDist(e.touches[0], e.touches[1]);
+        if (lastPinchDist <= 0) {
+          lastPinchDist = dist;
+          return;
+        }
+
+        // scale > 1 = spreading fingers (zoom in), scale < 1 = pinching fingers (zoom out)
+        const scale = dist / lastPinchDist;
+        lastPinchDist = dist;
+
+        if (Math.abs(scale - 1) < 0.001) return;
+
+        const mid = getTouchMidpoint(e.touches[0], e.touches[1]);
+        const rect = canvas.getBoundingClientRect();
+        const mousePos = new Cesium.Cartesian2(mid.x - rect.left, mid.y - rect.top);
+
+        const scene = viewer.scene;
+        const camera = scene.camera;
+        const ray = camera.getPickRay(mousePos);
+
+        let targetPoint: Cesium.Cartesian3 | undefined;
+        if (ray) {
+          const intersection = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.MOON);
+          if (intersection && intersection.start > 0) {
+            targetPoint = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
+          }
+        }
+
+        const factor = 1 / scale;
+        const currentHeight = camera.positionCartographic?.height || 1000000;
+
+        if (targetPoint && factor < 1.0) {
+          // Pinching outward: Zoom in toward the crater/feature between the two fingers
+          const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
+          const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
+          if (currentHeight > 400) {
+            const moveDistance = distanceToTarget * (1.0 - factor);
+            Cesium.Cartesian3.normalize(toTarget, toTarget);
+            camera.move(toTarget, moveDistance);
+          }
+        } else {
+          if (factor < 1.0) {
+            if (currentHeight > 400) {
+              const moveAmount = Math.max(250, currentHeight * (1.0 - factor));
+              camera.zoomIn(moveAmount);
+            }
+          } else {
+            if (currentHeight < 55000000) {
+              const moveAmount = Math.max(500, currentHeight * (factor - 1.0));
+              camera.zoomOut(moveAmount);
+            }
+          }
+        }
+
+        scene.requestRender();
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        lastPinchDist = 0;
+      }
     };
 
     const handlePointerDown = () => {
@@ -275,6 +370,10 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     };
 
     canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: true });
     canvas.addEventListener('pointerdown', handlePointerDown);
     canvas.addEventListener('dblclick', handleDoubleClick);
 
@@ -822,7 +921,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       <div className="w-full flex-1 flex relative">
         {viewMode === 'overlapped' ? (
           // OVERLAPPED MODE: Single Wide Cesium Viewer (100% clean, unobstructed lunar view)
-          <div ref={containerRef} className="w-full h-full block" />
+          <div ref={containerRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
         ) : (
           // SPLIT MODE: Dual Cesium Viewers side-by-side
           <div className="w-full h-full flex divide-x divide-slate-800">
@@ -830,14 +929,14 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
               <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-cyan-500/40 text-[11px] font-mono text-cyan-300 font-bold shadow-md">
                 LOCATION A: {siteA.name.split('(')[0].trim()}
               </div>
-              <div ref={containerRef} className="w-full h-full block" />
+              <div ref={containerRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
             </div>
 
             <div className="relative w-1/2 h-full flex flex-col">
               <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-amber-500/40 text-[11px] font-mono text-amber-300 font-bold shadow-md">
                 LOCATION B: {siteB ? siteB.name.split('(')[0].trim() : 'Site B'}
               </div>
-              <div ref={containerBRef} className="w-full h-full block" />
+              <div ref={containerBRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
             </div>
           </div>
         )}
@@ -889,9 +988,10 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             </Button>
           </div>
 
-          {/* Mouse Navigation Quick Guide Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-space-950/80 border border-slate-800 text-[10px] text-slate-400 shadow-md">
-            <span>Scroll Wheel: Zoom</span>
+          {/* Mouse & Trackpad Navigation Quick Guide Pill */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-slate-800 text-[10px] text-slate-300 shadow-md">
+            <span className="text-cyan-400 font-semibold">2-Finger / Wheel:</span>
+            <span>Zoom</span>
             <span className="text-slate-600">•</span>
             <span>Drag: Orbit</span>
             <span className="text-slate-600">•</span>
