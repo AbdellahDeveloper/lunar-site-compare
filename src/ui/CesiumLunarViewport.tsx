@@ -7,7 +7,7 @@ import {
   Site,
   Vector3D,
 } from '../types';
-import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles } from 'lucide-react';
+import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw } from 'lucide-react';
 
 interface CesiumLunarViewportProps {
   viewMode: ComparisonViewMode;
@@ -47,6 +47,9 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
   const [showEarthOrbit, setShowEarthOrbit] = useState(true);
   const [showSightlines, setShowSightlines] = useState(true);
 
+  // Live Camera Altitude state
+  const [altitudeKm, setAltitudeKm] = useState<number>(850);
+
   // Initialize Cesium with Moon Ellipsoid
   const createCesiumMoonViewer = (
     container: HTMLDivElement,
@@ -75,6 +78,19 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     viewer.scene.globe.enableLighting = true;
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#242b38');
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#05070d');
+
+    // Configure screen space camera controller for smooth & extreme zoom
+    viewer.scene.screenSpaceCameraController.enableZoom = true;
+    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 1500.0; // 1.5 km above surface (crater rim)
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 45000000.0; // 45,000 km (deep space orbital view)
+
+    // Listen to camera movements to update altitude HUD
+    viewer.camera.changed.addEventListener(() => {
+      const carto = viewer.camera.positionCartographic;
+      if (carto) {
+        setAltitudeKm(Math.max(1, Math.round(carto.height / 1000)));
+      }
+    });
 
     // Add High-Resolution LROC Global Moon Imagery
     try {
@@ -473,6 +489,57 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     });
   };
 
+  // Dedicated Zoom Controls
+  const handleZoomIn = () => {
+    const v = viewerARef.current;
+    if (!v) return;
+    const height = v.camera.positionCartographic?.height || 1000000;
+    const moveAmount = Math.max(3000, height * 0.35);
+    v.camera.zoomIn(moveAmount);
+    if (viewMode === 'split' && viewerBRef.current) {
+      viewerBRef.current.camera.zoomIn(moveAmount);
+    }
+  };
+
+  const handleZoomOut = () => {
+    const v = viewerARef.current;
+    if (!v) return;
+    const height = v.camera.positionCartographic?.height || 1000000;
+    const moveAmount = Math.max(5000, height * 0.45);
+    v.camera.zoomOut(moveAmount);
+    if (viewMode === 'split' && viewerBRef.current) {
+      viewerBRef.current.camera.zoomOut(moveAmount);
+    }
+  };
+
+  const handleFitMoon = () => {
+    const moon = Cesium.Ellipsoid.MOON;
+    viewerARef.current?.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(siteA.lon, siteA.lat, 2400000, moon),
+      duration: 1.2,
+    });
+    if (viewMode === 'split' && viewerBRef.current && siteB) {
+      viewerBRef.current.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(siteB.lon, siteB.lat, 2400000, moon),
+        duration: 1.2,
+      });
+    }
+  };
+
+  // Keyboard shortcut listener for +/- zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === '+' || e.key === '=') {
+        handleZoomIn();
+      } else if (e.key === '-' || e.key === '_') {
+        handleZoomOut();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [viewMode]);
+
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-space-950 select-none">
       {/* Top NASA Mission Telemetry HUD */}
@@ -601,6 +668,40 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
             </div>
           </div>
         )}
+
+        {/* Floating NASA Zoom Controls Widget (Right Side of Viewport) */}
+        <div className="absolute right-4 top-20 z-20 flex flex-col items-center bg-space-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/80 shadow-2xl gap-1.5 font-mono">
+          <button
+            onClick={handleZoomIn}
+            title="Zoom In (+) [Keyboard: +]"
+            className="p-2 rounded-lg bg-space-800 hover:bg-space-700 text-cyan-300 hover:text-white border border-slate-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+
+          <div className="py-1 px-1.5 text-center flex flex-col items-center">
+            <span className="text-[9px] text-slate-500 uppercase">ALT</span>
+            <span className="text-[10px] font-bold text-slate-200">
+              {altitudeKm >= 1000 ? `${(altitudeKm / 1000).toFixed(1)}k` : altitudeKm} km
+            </span>
+          </div>
+
+          <button
+            onClick={handleZoomOut}
+            title="Zoom Out (-) [Keyboard: -]"
+            className="p-2 rounded-lg bg-space-800 hover:bg-space-700 text-cyan-300 hover:text-white border border-slate-700 transition-colors shadow-sm"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleFitMoon}
+            title="Fit Moon / Reset Zoom [Keyboard: 0]"
+            className="p-1.5 rounded-lg bg-space-850 hover:bg-space-750 text-slate-400 hover:text-white text-[10px] transition-colors border border-slate-800 mt-0.5"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+        </div>
 
         {/* Camera Quick Presets (Bottom Left of 3D Viewport) */}
         <div className="absolute bottom-4 left-4 z-20 flex flex-wrap items-center gap-2 bg-space-900/85 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/70 text-xs">
