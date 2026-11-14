@@ -142,6 +142,7 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
 
     const viewer = new Cesium.Viewer(container, {
       globe: new Cesium.Globe(Cesium.Ellipsoid.MOON),
+      mapProjection: new Cesium.GeographicProjection(Cesium.Ellipsoid.MOON),
       baseLayerPicker: false,
       geocoder: false,
       homeButton: false,
@@ -160,22 +161,13 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#242b38');
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#05070d');
 
-    // Configure screen space camera controller for smooth & responsive navigation
+    // Disable legacy Cesium GIS camera controller inputs to avoid deadzones and stuck rotation
     const ssc = viewer.scene.screenSpaceCameraController;
-    ssc.enableZoom = true;
-    ssc.enableRotate = true;
-    ssc.enableTilt = true;
+    ssc.enableRotate = false;
     ssc.enableTranslate = false;
-    ssc.minimumZoomDistance = 400.0; // 400 meters above surface
-    ssc.maximumZoomDistance = 50000000.0; // 50,000 km deep space
-    ssc.zoomFactor = 8.0;
-    ssc.inertiaZoom = 0.5;
-    ssc.inertiaSpin = 0.5;
-
-    // Use Cesium native handlers for Right-Drag zoom
-    ssc.zoomEventTypes = [
-      Cesium.CameraEventType.RIGHT_DRAG,
-    ];
+    ssc.enableTilt = false;
+    ssc.enableLook = false;
+    ssc.enableZoom = false;
 
     // Track user interaction to seamlessly yield turntable rotation
     const canvas = viewer.canvas;
@@ -187,6 +179,132 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       interactionTimeoutRef.current = setTimeout(() => {
         isInteractingRef.current = false;
       }, 3000);
+    };
+
+    // --- Direct High-Precision Trackball Orbit & Drag Controller (Zero Deadzone) ---
+    let isDragging = false;
+    let dragMode: 'orbit' | 'zoom' = 'orbit';
+    let lastX = 0;
+    let lastY = 0;
+    let activePointerId = -1;
+    let velX = 0;
+    let velY = 0;
+    let lastMoveTime = performance.now();
+    let momentumAnimId: number | null = null;
+
+    const stopInertia = () => {
+      if (momentumAnimId !== null) {
+        cancelAnimationFrame(momentumAnimId);
+        momentumAnimId = null;
+      }
+      velX = 0;
+      velY = 0;
+    };
+
+    const applyInertia = () => {
+      if (Math.hypot(velX, velY) < 0.005 || isDragging) {
+        stopInertia();
+        return;
+      }
+      if (viewer.isDestroyed()) return;
+
+      const camera = viewer.scene.camera;
+      camera.rotate(camera.up, -velX * 0.035);
+      camera.rotate(camera.right, -velY * 0.035);
+      viewer.scene.requestRender();
+
+      velX *= 0.91; // Smooth aerospace friction
+      velY *= 0.91;
+
+      momentumAnimId = requestAnimationFrame(applyInertia);
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      // Ignore if multi-touch pinch is active
+      if (e.pointerType === 'touch' && lastPinchDist > 0) return;
+
+      stopInertia();
+      notifyInteraction();
+
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      activePointerId = e.pointerId;
+      dragMode = e.button === 2 ? 'zoom' : 'orbit';
+      lastMoveTime = performance.now();
+      velX = 0;
+      velY = 0;
+
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {}
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDragging || e.pointerId !== activePointerId) return;
+      notifyInteraction();
+
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      if (dx === 0 && dy === 0) return;
+
+      const now = performance.now();
+      const dt = Math.max(1, now - lastMoveTime);
+      lastMoveTime = now;
+
+      // Track movement velocity for inertia glide
+      velX = dx / dt;
+      velY = dy / dt;
+
+      const scene = viewer.scene;
+      const camera = scene.camera;
+
+      if (dragMode === 'zoom') {
+        // Right-drag zoom
+        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const zoomDelta = -dy * 0.004;
+        if (zoomDelta > 0) {
+          camera.zoomIn(Math.max(300, currentHeight * Math.min(0.25, zoomDelta)));
+        } else {
+          camera.zoomOut(Math.max(500, currentHeight * Math.min(0.25, -zoomDelta)));
+        }
+      } else {
+        // Left-drag / single-touch trackball orbit around the Moon
+        // Immediate response on even 1-pixel movement
+        const sensitivity = 0.0035;
+        const angleH = -dx * sensitivity;
+        const angleV = -dy * sensitivity;
+
+        if (Math.abs(angleH) > 0.000001) {
+          camera.rotate(camera.up, angleH);
+        }
+        if (Math.abs(angleV) > 0.000001) {
+          camera.rotate(camera.right, angleV);
+        }
+      }
+
+      scene.requestRender();
+    };
+
+    const handlePointerUp = (e: PointerEvent) => {
+      if (e.pointerId === activePointerId) {
+        isDragging = false;
+        try {
+          canvas.releasePointerCapture(e.pointerId);
+        } catch {}
+
+        // Launch smooth glide if released with motion
+        if (dragMode === 'orbit' && Math.hypot(velX, velY) > 0.06) {
+          momentumAnimId = requestAnimationFrame(applyInertia);
+        }
+      }
+    };
+
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
     };
 
     // Universal cursor-centric mouse wheel & two-finger trackpad pinch zoom
@@ -340,10 +458,6 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       }
     };
 
-    const handlePointerDown = () => {
-      notifyInteraction();
-    };
-
     // Double-click to fly smoothly into clicked crater/location
     const handleDoubleClick = (e: MouseEvent) => {
       if (viewer.isDestroyed()) return;
@@ -369,12 +483,17 @@ export const CesiumLunarViewport: React.FC<CesiumLunarViewportProps> = ({
       }
     };
 
+    // Attach high-precision trackball, wheel, touch & gesture listeners
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+    canvas.addEventListener('contextmenu', handleContextMenu);
     canvas.addEventListener('wheel', handleCanvasWheel, { passive: false });
     canvas.addEventListener('touchstart', handleTouchStart, { passive: true });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-    canvas.addEventListener('pointerdown', handlePointerDown);
     canvas.addEventListener('dblclick', handleDoubleClick);
 
     // Listen to camera movements to update altitude HUD
