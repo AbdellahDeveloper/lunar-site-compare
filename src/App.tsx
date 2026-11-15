@@ -604,7 +604,6 @@ export const App: React.FC = () => {
           {/* Upper Workspace Panel (Horizontal Group: Left Panel, 3D Moon Viewport, Right Panel) */}
           <ResizablePanel
             id="workspace-viewport"
-            defaultSize="78%"
             minSize={250}
             className="relative h-full w-full overflow-hidden"
           >
@@ -804,8 +803,8 @@ export const App: React.FC = () => {
           {/* Bottom Resizable Timeline Panel */}
           <ResizablePanel
             id="timeline-dock"
-            defaultSize="22%"
-            minSize={110}
+            defaultSize={210}
+            minSize={180}
             maxSize={450}
             collapsible={true}
             collapsedSize={36}
