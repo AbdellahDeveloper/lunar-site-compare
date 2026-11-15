@@ -668,8 +668,10 @@ export const App: React.FC = () => {
               siteB={siteB}
               sunIntervalsA={evaluationA.sunIntervals}
               earthIntervalsA={evaluationA.earthIntervals}
+              bothUpIntervalsA={evaluationA.bothUpIntervals}
               sunIntervalsB={evaluationB?.sunIntervals}
               earthIntervalsB={evaluationB?.earthIntervals}
+              bothUpIntervalsB={evaluationB?.bothUpIntervals}
               onTogglePlay={() => setIsPlaying((p) => !p)}
               onSetSpeed={setPlaybackSpeed}
               onScrub={setCurrentScrubMs}

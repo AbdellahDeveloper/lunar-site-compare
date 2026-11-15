@@ -20,8 +20,10 @@ interface NasaTimelineScrubberProps {
   siteB?: Site;
   sunIntervalsA: TimeInterval[];
   earthIntervalsA: TimeInterval[];
+  bothUpIntervalsA?: TimeInterval[];
   sunIntervalsB?: TimeInterval[];
   earthIntervalsB?: TimeInterval[];
+  bothUpIntervalsB?: TimeInterval[];
   onTogglePlay: () => void;
   onSetSpeed: (speed: number) => void;
   onScrub: (timeMs: number) => void;
@@ -40,8 +42,10 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
   siteB,
   sunIntervalsA,
   earthIntervalsA,
+  bothUpIntervalsA,
   sunIntervalsB,
   earthIntervalsB,
+  bothUpIntervalsB,
   onTogglePlay,
   onSetSpeed,
   onScrub,
@@ -52,6 +56,39 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
   const currentDate = new Date(currentScrubMs);
   const durationMs = Math.max(1, windowEndMs - windowStartMs);
   const progressFrac = Math.max(0, Math.min(1, (currentScrubMs - windowStartMs) / durationMs));
+
+  // Compute simultaneous overlap intervals (both Sun and Earth active) as fallback
+  const computeOverlap = (sun: TimeInterval[], earth: TimeInterval[]): TimeInterval[] => {
+    const result: TimeInterval[] = [];
+    for (const s of sun) {
+      for (const e of earth) {
+        const start = Math.max(s.startMs, e.startMs);
+        const end = Math.min(s.endMs, e.endMs);
+        if (end > start) {
+          result.push({
+            startMs: start,
+            endMs: end,
+            durationHours: (end - start) / (3600 * 1000),
+            openStart: s.openStart && e.openStart,
+            openEnd: s.openEnd && e.openEnd,
+          });
+        }
+      }
+    }
+    return result;
+  };
+
+  const effectiveBothUpA =
+    bothUpIntervalsA && bothUpIntervalsA.length > 0
+      ? bothUpIntervalsA
+      : computeOverlap(sunIntervalsA, earthIntervalsA);
+
+  const effectiveBothUpB =
+    bothUpIntervalsB && bothUpIntervalsB.length > 0
+      ? bothUpIntervalsB
+      : sunIntervalsB && earthIntervalsB
+      ? computeOverlap(sunIntervalsB, earthIntervalsB)
+      : [];
 
   // Interactive timeline track scrubber ref & state
   const timelineRef = useRef<HTMLDivElement | null>(null);
@@ -200,43 +237,71 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
               <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
                 <span className="flex items-center gap-1 text-amber-400">
                   <Sun className="w-2.5 h-2.5" />
-                  <span>Sun Light</span>
+                  <span>Sun Light (Orange)</span>
                 </span>
                 <span className="flex items-center gap-1 text-cyan-400">
                   <Radio className="w-2.5 h-2.5" />
                   <span>Earth Link (Blue)</span>
                 </span>
+                <span className="flex items-center gap-1 text-red-400 font-bold">
+                  <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
+                  <span>Interesting Time Zone</span>
+                </span>
               </div>
             </div>
 
-            {/* Location A: Sun Track (Gold / Amber) */}
-            <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Sunlight Power Windows">
-              {sunIntervalsA.map((inv, idx) => {
+            {/* Location A: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
+            <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
+              {/* Red Overlap Bracket holding both lines */}
+              {effectiveBothUpA.map((inv, idx) => {
                 const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
                 const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                const width = Math.max(0.6, x1 - x0);
                 return (
                   <div
-                    key={`sunA_${idx}`}
-                    className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
-                    style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                  />
+                    key={`bothA_${idx}`}
+                    className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
+                    style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
+                    title={`Location A - Interesting Time Zone: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+                  >
+                    {width > 8 && (
+                      <span className="text-[8px] font-bold text-red-200 uppercase tracking-widest px-1 py-0.2 rounded bg-red-950/90 border border-red-500 shadow-xs whitespace-nowrap">
+                        ★ Interesting Zone
+                      </span>
+                    )}
+                  </div>
                 );
               })}
-            </div>
 
-            {/* Location A: Earth DTE Track (Sky Blue / Cyan) */}
-            <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Direct-to-Earth Comm Windows">
-              {earthIntervalsA.map((inv, idx) => {
-                const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                return (
-                  <div
-                    key={`earthA_${idx}`}
-                    className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
-                    style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                  />
-                );
-              })}
+              {/* Location A: Sun Track (Gold / Amber) */}
+              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Sunlight Power Windows">
+                {sunIntervalsA.map((inv, idx) => {
+                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                  return (
+                    <div
+                      key={`sunA_${idx}`}
+                      className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
+                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Location A: Earth DTE Track (Sky Blue / Cyan) */}
+              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Direct-to-Earth Comm Windows">
+                {earthIntervalsA.map((inv, idx) => {
+                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                  return (
+                    <div
+                      key={`earthA_${idx}`}
+                      className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
+                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -254,43 +319,71 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
                 <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
                   <span className="flex items-center gap-1 text-amber-400">
                     <Sun className="w-2.5 h-2.5" />
-                    <span>Sun Light</span>
+                    <span>Sun Light (Orange)</span>
                   </span>
                   <span className="flex items-center gap-1 text-cyan-400">
                     <Radio className="w-2.5 h-2.5" />
                     <span>Earth Link (Blue)</span>
                   </span>
+                  <span className="flex items-center gap-1 text-red-400 font-bold">
+                    <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
+                    <span>Interesting Time Zone</span>
+                  </span>
                 </div>
               </div>
 
-              {/* Location B: Sun Track (Gold / Amber) */}
-              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Sunlight Power Windows">
-                {sunIntervalsB.map((inv, idx) => {
+              {/* Location B: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
+              <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
+                {/* Red Overlap Bracket holding both lines */}
+                {effectiveBothUpB.map((inv, idx) => {
                   const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
                   const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                  const width = Math.max(0.6, x1 - x0);
                   return (
                     <div
-                      key={`sunB_${idx}`}
-                      className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
-                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                    />
+                      key={`bothB_${idx}`}
+                      className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
+                      style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
+                      title={`Location B - Interesting Time Zone: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+                    >
+                      {width > 8 && (
+                        <span className="text-[8px] font-bold text-red-200 uppercase tracking-widest px-1 py-0.2 rounded bg-red-950/90 border border-red-500 shadow-xs whitespace-nowrap">
+                          ★ Interesting Zone
+                        </span>
+                      )}
+                    </div>
                   );
                 })}
-              </div>
 
-              {/* Location B: Earth DTE Track (Sky Blue / Cyan) */}
-              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Direct-to-Earth Comm Windows">
-                {earthIntervalsB.map((inv, idx) => {
-                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                  return (
-                    <div
-                      key={`earthB_${idx}`}
-                      className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
-                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                    />
-                  );
-                })}
+                {/* Location B: Sun Track (Gold / Amber) */}
+                <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Sunlight Power Windows">
+                  {sunIntervalsB.map((inv, idx) => {
+                    const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                    const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                    return (
+                      <div
+                        key={`sunB_${idx}`}
+                        className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
+                        style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Location B: Earth DTE Track (Sky Blue / Cyan) */}
+                <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Direct-to-Earth Comm Windows">
+                  {earthIntervalsB.map((inv, idx) => {
+                    const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                    const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                    return (
+                      <div
+                        key={`earthB_${idx}`}
+                        className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
+                        style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
