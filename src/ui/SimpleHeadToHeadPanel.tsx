@@ -5,7 +5,6 @@ import {
   Sparkles,
   ShieldCheck,
   Trophy,
-  Award,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
@@ -24,7 +23,7 @@ export interface SimpleHeadToHeadPanelProps {
   currentPointB: EphemerisPoint;
   onFlyToSiteA: () => void;
   onFlyToSiteB: () => void;
-  onClaimBadge: (site: Site) => void;
+  onClaimBadge?: (site: Site) => void;
   onChangeSites?: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
@@ -339,16 +338,6 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                 ? `Site B (${siteB.name.split('(')[0].trim()}) wins the face-off with superior operational margins for Artemis base infrastructure.`
                 : 'Both locations offer balanced tradeoffs between solar generation and communication access.'}
             </p>
-
-            {/* Claim Badge Button for Winner */}
-            <Button
-              size="sm"
-              onClick={() => onClaimBadge(winningSite)}
-              className="mt-1 w-full font-bold text-xs bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-md shadow-cyan-950/50 h-8"
-            >
-              <Award className="w-3.5 h-3.5 mr-1.5 text-solar-gold" />
-              Pick as Favorite & Get Badge!
-            </Button>
           </div>
         </div>
       )}

@@ -771,10 +771,6 @@ export const App: React.FC = () => {
                     currentPointB={currentPointB}
                     onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
                     onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
-                    onClaimBadge={(site) => {
-                      setSelectedBadgeSite(site);
-                      setShowBadgeModal(true);
-                    }}
                     onChangeSites={() => {
                       setActiveTool('landing-sites');
                       leftPanelRef.current?.expand();
