@@ -10,7 +10,6 @@ import {
   MapPin,
   Sun,
   Radio,
-  Mountain,
   Globe,
   ShieldAlert,
   Award,
@@ -121,15 +120,6 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     targetDescription: 'Solar illumination timeline, grazing angle analysis, shadow duration, and terminator line',
     category: 'Telemetry & Analysis',
     badgeText: 'Sunlight',
-  },
-  {
-    id: 'viewshed',
-    label: 'Viewshed Analysis',
-    icon: Mountain,
-    targetPanel: 'right',
-    targetDescription: '360° cylindrical local horizon panorama with Solar & Earth tracking trajectories',
-    category: 'Telemetry & Analysis',
-    badgeText: '360° Horiz',
   },
   {
     id: 'graticule',

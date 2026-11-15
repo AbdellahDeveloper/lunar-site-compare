@@ -142,7 +142,6 @@ export const App: React.FC = () => {
       'measurements',
       'terrain-profile',
       'sight-lines',
-      'viewshed',
       'polar-sky',
       'monte-carlo',
       'places-of-interest',

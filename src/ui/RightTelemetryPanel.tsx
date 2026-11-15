@@ -8,7 +8,6 @@ import {
   SlipCase,
   UIMode,
 } from '../types';
-import { HorizonPanorama } from './HorizonPanorama';
 import { SkyPlot } from './SkyPlot';
 import { ElevationProfileChart } from './ElevationProfileChart';
 import {
@@ -21,7 +20,6 @@ import {
   Activity,
   Sun,
   Orbit,
-  Mountain,
   Disc,
   ShieldAlert,
 } from 'lucide-react';
@@ -131,7 +129,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   // Determine current active section for Right Sidebar
   const isElevationMode = activeTool === 'terrain-profile';
   const isSightlinesMode = activeTool === 'sight-lines';
-  const isViewshedMode = activeTool === 'viewshed';
   const isPolarSkyMode = activeTool === 'polar-sky';
   const isMonteCarloMode = activeTool === 'monte-carlo';
   const isCameraMode = activeTool === 'places-of-interest';
@@ -140,7 +137,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     activeTool === 'measurements' ||
     (!isElevationMode &&
       !isSightlinesMode &&
-      !isViewshedMode &&
       !isPolarSkyMode &&
       !isMonteCarloMode &&
       !isCameraMode &&
@@ -149,7 +145,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   const getSectionTitle = () => {
     if (isElevationMode) return 'Terrain Profile';
     if (isSightlinesMode) return 'Sight Lines & Rays';
-    if (isViewshedMode) return '360° Viewshed';
     if (isPolarSkyMode) return 'Polar Sky Plot';
     if (isMonteCarloMode) return 'Monte Carlo Risk';
     if (isCameraMode) return 'Camera Presets';
@@ -185,7 +180,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             <div className="flex items-center gap-1.5">
               {isElevationMode && <Activity className="w-3.5 h-3.5 text-cyan-400" />}
               {isSightlinesMode && <Eye className="w-3.5 h-3.5 text-amber-400" />}
-              {isViewshedMode && <Mountain className="w-3.5 h-3.5 text-cyan-400" />}
               {isPolarSkyMode && <Disc className="w-3.5 h-3.5 text-cyan-400" />}
               {isMonteCarloMode && <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />}
               {isCameraMode && <Camera className="w-3.5 h-3.5 text-cyan-400" />}
@@ -200,8 +194,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
                     ? 'Topographic horizon mask H(α) vs. Sun and Earth elevation h(t) over time.'
                     : isSightlinesMode
                     ? 'Line-of-sight laser rays and apparent celestial ephemeris trails.'
-                    : isViewshedMode
-                    ? '360° cylindrical local terrain panorama showing solar and Earth tracking.'
                     : isPolarSkyMode
                     ? 'Polar radar azimuth-elevation projection with local terrain occlusion.'
                     : isMonteCarloMode
@@ -323,21 +315,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             </div>
           )}
 
-          {/* ============================================================== */}
-          {/* 3. 360° VIEWSHED HORIZON PANORAMA                             */}
-          {/* ============================================================== */}
-          {isViewshedMode && (
-            <div className="flex flex-col gap-2 animate-fade-in font-mono">
-              <HorizonPanorama
-                currentPoint={currentPointA}
-                allPoints={allPointsA}
-                mask={maskA}
-                siteName={siteA.name}
-                useTerrain={true}
-                elevKm={siteA.elevKm}
-              />
-            </div>
-          )}
 
           {/* ============================================================== */}
           {/* 4. POLAR RADAR SKY PLOT                                        */}
