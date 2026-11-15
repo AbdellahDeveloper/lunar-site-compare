@@ -58,15 +58,6 @@ export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
     badgeText: 'Versus',
   },
   {
-    id: 'places-of-interest',
-    label: 'Camera Views',
-    icon: Camera,
-    targetPanel: 'right',
-    targetDescription: 'Jump camera directly to Site A, Site B, or high-altitude orbital vista',
-    category: 'GIS & Mapping',
-    badgeText: '3D Views',
-  },
-  {
     id: 'my-badge',
     label: 'Claim Badge',
     icon: Award,

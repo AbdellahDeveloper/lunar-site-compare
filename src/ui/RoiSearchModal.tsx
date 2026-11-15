@@ -22,10 +22,11 @@ import {
   Button,
 } from '@/components/ui';
 import { OptimalRoiResult } from '@/engine/roiOptimizer';
-import { Site } from '@/types';
+import { Site, UIMode } from '@/types';
 
 export interface RoiSearchModalProps {
   result: OptimalRoiResult;
+  uiMode?: UIMode;
   onSetLocationA: (site: Site) => void;
   onSetLocationB: (site: Site) => void;
   onRedraw: () => void;
@@ -34,11 +35,13 @@ export interface RoiSearchModalProps {
 
 export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
   result,
+  uiMode = 'detailed',
   onSetLocationA,
   onSetLocationB,
   onRedraw,
   onClose,
 }) => {
+  const isSimple = uiMode === 'simple';
   const {
     bestSite,
     score,
@@ -49,6 +52,9 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
     avgTrackingFlux,
     evaluatedCandidatesCount,
   } = result;
+
+  // Realistic power flux: on the lunar surface, vertical/tracking arrays receive high incident flux
+  const displayFlux = Math.max(avgTrackingFlux || 0, avgPowerFlux || 0);
 
   const latStr = `${Math.abs(bestSite.lat).toFixed(3)}°${bestSite.lat < 0 ? 'S' : 'N'}`;
   const lonStr = `${Math.abs(bestSite.lon).toFixed(3)}°${bestSite.lon >= 0 ? 'E' : 'W'}`;
@@ -71,13 +77,15 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
               </div>
               <div>
                 <DialogTitle className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                  Optimal Landing Site Discovered
+                  {isSimple ? 'Best Moon Base Discovered!' : 'Optimal Landing Site Discovered'}
                   <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[11px] font-bold">
                     Score: {score}/100
                   </Badge>
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-400 mt-0.5">
-                  Algorithm evaluated {evaluatedCandidatesCount} interior candidate coordinates within user-drawn ROI.
+                  {isSimple
+                    ? 'Found the top Artemis base candidate inside your selected boundary.'
+                    : `Algorithm evaluated ${evaluatedCandidatesCount} interior candidate coordinates within user-drawn ROI.`}
                 </DialogDescription>
               </div>
             </div>
@@ -98,7 +106,7 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
             </div>
             <div>
               <div className="text-xs font-semibold text-cyan-200">
-                {bestSite.name}
+                {isSimple ? `Base Candidate (${latStr}, ${lonStr})` : bestSite.name}
               </div>
               <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex items-center gap-2">
                 <span>Lat: {latStr}</span>
@@ -187,21 +195,23 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
                 Avg Solar Flux
               </span>
               <Badge variant="outline" className="text-[10px] bg-yellow-950/30 text-yellow-400 border-yellow-500/30">
-                {avgPowerFlux > 0 ? `${((avgPowerFlux / 1361) * 100).toFixed(0)}% Intensity` : '0%'}
+                {displayFlux > 0 ? `${((displayFlux / 1361) * 100).toFixed(0)}% Intensity` : '0%'}
               </Badge>
             </div>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-xl font-bold text-yellow-400 font-mono">
-                {avgPowerFlux.toFixed(0)} W/m²
+                {displayFlux.toFixed(0)} W/m²
               </span>
-              {avgTrackingFlux > 0 && (
-                <span className="text-xs text-emerald-400 font-mono">
-                  ({avgTrackingFlux.toFixed(0)} W/m² tracking)
+              {avgPowerFlux > 0 && avgTrackingFlux > 0 && Math.abs(avgPowerFlux - avgTrackingFlux) > 5 && (
+                <span className="text-xs text-slate-400 font-mono">
+                  ({avgPowerFlux.toFixed(0)} W/m² flat)
                 </span>
               )}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
-              Average horizontal solar collector irradiance across the window.
+              {isSimple
+                ? 'Average solar irradiance available for vertical base power collectors.'
+                : 'Average incident irradiance for vertical/tracking solar array across the window.'}
             </div>
           </Card>
         </div>

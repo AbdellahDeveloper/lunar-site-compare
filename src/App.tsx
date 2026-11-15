@@ -618,6 +618,7 @@ export const App: React.FC = () => {
                 className="transition-all duration-150"
               >
                 <LeftControlPanel
+                  uiMode={uiMode}
                   activeTool={activeTool}
                   siteA={siteA}
                   siteB={siteB}
@@ -739,19 +740,16 @@ export const App: React.FC = () => {
                     evaluationB={evaluationB}
                     currentPointA={currentPointA}
                     currentPointB={currentPointB}
-                    onSelectSiteA={setSiteA}
-                    onSelectSiteB={setSiteB}
                     onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
                     onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
                     onClaimBadge={(site) => {
                       setSelectedBadgeSite(site);
                       setShowBadgeModal(true);
                     }}
-                    onStartFindMyBase={() => {
-                      setIsDrawingRoi(true);
-                      setIsPicking3DLocation(false);
-                      setRoiPolygon([]);
-                      setOptimalRoiResult(null);
+                    onChangeSites={() => {
+                      setActiveTool('landing-sites');
+                      leftPanelRef.current?.expand();
+                      setIsLeftCollapsed(false);
                     }}
                     isCollapsed={isRightCollapsed}
                     onToggleCollapse={toggleRightCollapse}
@@ -927,6 +925,7 @@ export const App: React.FC = () => {
       {showRoiResultModal && optimalRoiResult && (
         <RoiSearchModal
           result={optimalRoiResult}
+          uiMode={uiMode}
           onSetLocationA={handleApplyRoiSiteToA}
           onSetLocationB={handleApplyRoiSiteToB}
           onRedraw={handleRedrawRoi}

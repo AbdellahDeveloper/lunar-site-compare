@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Site, EphemerisPoint, Vector3D } from '../types';
+import { Site, EphemerisPoint, Vector3D, UIMode } from '../types';
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui';
 
 interface LeftControlPanelProps {
+  uiMode?: UIMode;
   activeTool: string;
   siteA: Site;
   siteB: Site;
@@ -94,6 +95,7 @@ function bodyVectorToLatLon(vec?: Vector3D) {
 }
 
 export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
+  uiMode = 'detailed',
   activeTool,
   siteA,
   siteB,
@@ -128,6 +130,7 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
   const [activeSiteTab, setActiveSiteTab] = useState<'A' | 'B'>('A');
   const [placemarkFilter, setPlacemarkFilter] = useState('');
 
+  const isSimple = uiMode === 'simple';
   const activeSite = activeSiteTab === 'A' ? siteA : siteB;
   const isCurrentActiveLit = activeSiteTab === 'A' ? isSiteALit : isSiteBLit;
 
@@ -146,12 +149,13 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
   );
 
   // Determine current active section for Left Sidebar
-  const isTargetMode = activeTool === 'landing-sites' || (!['layer-management', 'coordinates', 'placemarks', 'graticule'].includes(activeTool));
-  const isLayerMode = activeTool === 'layer-management' || activeTool === 'graticule';
-  const isCoordsMode = activeTool === 'coordinates';
-  const isPlacemarksMode = activeTool === 'placemarks';
+  const isTargetMode = isSimple || activeTool === 'landing-sites' || (!['layer-management', 'coordinates', 'placemarks', 'graticule'].includes(activeTool));
+  const isLayerMode = !isSimple && (activeTool === 'layer-management' || activeTool === 'graticule');
+  const isCoordsMode = !isSimple && activeTool === 'coordinates';
+  const isPlacemarksMode = !isSimple && activeTool === 'placemarks';
 
   const getSectionTitle = () => {
+    if (isSimple) return 'Choose Sites';
     if (isLayerMode) return 'Layer Management';
     if (isCoordsMode) return 'Coordinates';
     if (isPlacemarksMode) return 'Placemarks';
@@ -295,7 +299,7 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
                   </optgroup>
                 </Select>
 
-                {onStart3DPicking && (
+                {!isSimple && onStart3DPicking && (
                   <Button
                     variant="outline"
                     size="xs"
@@ -332,54 +336,58 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      TERRAIN SLOPE
-                      <InfoTooltip text="Surface tilt derived from LOLA DEM. Artemis III HLS constraint: <5° optimal, <8° maximum limit." />
-                    </span>
-                    <Badge
-                      variant={activeSite.slopeDeg <= 5.0 ? 'optimal' : activeSite.slopeDeg <= 8.0 ? 'constrained' : 'critical'}
-                      className="text-[9px] py-0 h-4"
-                    >
-                      {activeSite.slopeDeg.toFixed(1)}°
-                    </Badge>
-                  </div>
+                  {!isSimple && (
+                    <>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          TERRAIN SLOPE
+                          <InfoTooltip text="Surface tilt derived from LOLA DEM. Artemis III HLS constraint: <5° optimal, <8° maximum limit." />
+                        </span>
+                        <Badge
+                          variant={activeSite.slopeDeg <= 5.0 ? 'optimal' : activeSite.slopeDeg <= 8.0 ? 'constrained' : 'critical'}
+                          className="text-[9px] py-0 h-4"
+                        >
+                          {activeSite.slopeDeg.toFixed(1)}°
+                        </Badge>
+                      </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      &gt;8° SLOPE BUFFER
-                      <InfoTooltip text="Minimum safety distance to nearest slopes exceeding 8°. HLS requirement: ≥100 m." />
-                    </span>
-                    <span className={`font-bold ${activeSite.distanceToSteepTerrainM >= 100 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {activeSite.distanceToSteepTerrainM} m
-                    </span>
-                  </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          &gt;8° SLOPE BUFFER
+                          <InfoTooltip text="Minimum safety distance to nearest slopes exceeding 8°. HLS requirement: ≥100 m." />
+                        </span>
+                        <span className={`font-bold ${activeSite.distanceToSteepTerrainM >= 100 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {activeSite.distanceToSteepTerrainM} m
+                        </span>
+                      </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      NEAREST PSR WALK
-                      <InfoTooltip text="Walking distance to nearest Permanently Shadowed Region cold trap for volatile ice sampling. Target: ≤2.0 km." />
-                    </span>
-                    <span className={`font-bold ${activeSite.nearestPsrDistanceKm <= 2.0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {activeSite.nearestPsrDistanceKm.toFixed(1)} km
-                    </span>
-                  </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          NEAREST PSR WALK
+                          <InfoTooltip text="Walking distance to nearest Permanently Shadowed Region cold trap for volatile ice sampling. Target: ≤2.0 km." />
+                        </span>
+                        <span className={`font-bold ${activeSite.nearestPsrDistanceKm <= 2.0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          {activeSite.nearestPsrDistanceKm.toFixed(1)} km
+                        </span>
+                      </div>
 
-                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      VOLATILE POTENTIAL
-                      <InfoTooltip text="Hydrogen abundance detected by LRO LEND neutron spectrometer." />
-                    </span>
-                    <span className="text-teal-300 font-bold">{activeSite.volatileIceScore}%</span>
-                  </div>
+                      <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-800">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          VOLATILE POTENTIAL
+                          <InfoTooltip text="Hydrogen abundance detected by LRO LEND neutron spectrometer." />
+                        </span>
+                        <span className="text-teal-300 font-bold">{activeSite.volatileIceScore}%</span>
+                      </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 flex items-center gap-1">
-                      ROCKINESS HAZARD
-                      <InfoTooltip text="Rock fraction abundance from LRO Diviner radiometer. Safe landing goal: <15%." />
-                    </span>
-                    <span className="text-pink-300 font-bold">{activeSite.rockAbundance}%</span>
-                  </div>
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 flex items-center gap-1">
+                          ROCKINESS HAZARD
+                          <InfoTooltip text="Rock fraction abundance from LRO Diviner radiometer. Safe landing goal: <15%." />
+                        </span>
+                        <span className="text-pink-300 font-bold">{activeSite.rockAbundance}%</span>
+                      </div>
+                    </>
+                  )}
 
                   <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
                     <span className="truncate max-w-[190px]">{activeSite.regionName || activeSite.agency}</span>

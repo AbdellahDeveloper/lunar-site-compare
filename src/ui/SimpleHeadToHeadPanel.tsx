@@ -12,9 +12,8 @@ import {
   MapPin,
   Camera,
 } from 'lucide-react';
-import { Button, Card, Badge, Select } from '@/components/ui';
+import { Button, Card, Badge } from '@/components/ui';
 import { Site, ScenarioEvaluation, EphemerisPoint } from '@/types';
-import { LUNAR_SITES } from '@/data/sites';
 
 export interface SimpleHeadToHeadPanelProps {
   siteA: Site;
@@ -23,12 +22,10 @@ export interface SimpleHeadToHeadPanelProps {
   evaluationB?: ScenarioEvaluation;
   currentPointA: EphemerisPoint;
   currentPointB: EphemerisPoint;
-  onSelectSiteA: (site: Site) => void;
-  onSelectSiteB: (site: Site) => void;
   onFlyToSiteA: () => void;
   onFlyToSiteB: () => void;
   onClaimBadge: (site: Site) => void;
-  onStartFindMyBase: () => void;
+  onChangeSites?: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -40,12 +37,10 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
   evaluationB,
   currentPointA,
   currentPointB,
-  onSelectSiteA,
-  onSelectSiteB,
   onFlyToSiteA,
   onFlyToSiteB,
   onClaimBadge,
-  onStartFindMyBase,
+  onChangeSites,
   isCollapsed,
   onToggleCollapse,
 }) => {
@@ -126,12 +121,12 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
             <span className="text-[10px] text-slate-400">Site A vs Site B</span>
           </div>
 
-          {/* Quick Location Selectors for A and B */}
+          {/* Active Contenders Summary Card (Location selection managed in Left Panel) */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             {/* Site A Card */}
-            <div className="p-2.5 rounded-xl bg-space-900/80 border border-cyan-500/40 flex flex-col gap-1.5">
+            <div className="p-2.5 rounded-xl bg-space-900/80 border border-cyan-500/40 flex flex-col gap-1 justify-between shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-cyan-400 flex items-center gap-1">
+                <span className="text-[10px] font-bold text-cyan-400 flex items-center gap-1 font-mono">
                   <span className="w-2 h-2 rounded-full bg-cyan-400" />
                   SITE A
                 </span>
@@ -144,26 +139,18 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                   Fly
                 </button>
               </div>
-              <Select
-                value={siteA.id}
-                onChange={(e) => {
-                  const s = LUNAR_SITES.find((x) => x.id === e.target.value);
-                  if (s) onSelectSiteA(s);
-                }}
-                className="w-full text-[11px] h-7 bg-space-950 border-slate-700 text-cyan-200"
-              >
-                {LUNAR_SITES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name.split('(')[0].trim()}
-                  </option>
-                ))}
-              </Select>
+              <div className="font-semibold text-slate-100 text-[11px] truncate" title={siteA.name}>
+                {siteA.name.split('(')[0].trim()}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                {Math.abs(siteA.lat).toFixed(2)}°S, {siteA.lon.toFixed(2)}°E
+              </div>
             </div>
 
             {/* Site B Card */}
-            <div className="p-2.5 rounded-xl bg-space-900/80 border border-amber-500/40 flex flex-col gap-1.5">
+            <div className="p-2.5 rounded-xl bg-space-900/80 border border-amber-500/40 flex flex-col gap-1 justify-between shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1">
+                <span className="text-[10px] font-bold text-amber-400 flex items-center gap-1 font-mono">
                   <span className="w-2 h-2 rounded-full bg-amber-400" />
                   SITE B
                 </span>
@@ -176,22 +163,27 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                   Fly
                 </button>
               </div>
-              <Select
-                value={siteB.id}
-                onChange={(e) => {
-                  const s = LUNAR_SITES.find((x) => x.id === e.target.value);
-                  if (s) onSelectSiteB(s);
-                }}
-                className="w-full text-[11px] h-7 bg-space-950 border-slate-700 text-amber-200"
-              >
-                {LUNAR_SITES.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name.split('(')[0].trim()}
-                  </option>
-                ))}
-              </Select>
+              <div className="font-semibold text-slate-100 text-[11px] truncate" title={siteB.name}>
+                {siteB.name.split('(')[0].trim()}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono">
+                {Math.abs(siteB.lat).toFixed(2)}°S, {siteB.lon.toFixed(2)}°E
+              </div>
             </div>
           </div>
+
+          {onChangeSites && (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={onChangeSites}
+              className="w-full text-[10px] h-6 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 font-mono flex items-center justify-center gap-1 border border-slate-800/80 rounded-lg"
+            >
+              <MapPin className="w-3 h-3 text-cyan-400" />
+              <span>Change Locations in Left Panel</span>
+              <ArrowRight className="w-2.5 h-2.5 ml-0.5 opacity-60" />
+            </Button>
+          )}
 
           {/* 4 Head-to-Head Comparison Battle Cards */}
           <div className="flex flex-col gap-2.5">
@@ -356,19 +348,6 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
             >
               <Award className="w-3.5 h-3.5 mr-1.5 text-solar-gold" />
               Pick as Favorite & Get Badge!
-            </Button>
-          </div>
-
-          {/* Find My Base Shortcut */}
-          <div className="pt-2 border-t border-slate-800">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onStartFindMyBase}
-              className="w-full text-xs text-slate-300 border-cyan-500/40 hover:bg-cyan-950/40 hover:text-cyan-200 h-8 font-semibold"
-            >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-cyan-400" />
-              Find My Base (Draw Tool)
             </Button>
           </div>
         </div>
