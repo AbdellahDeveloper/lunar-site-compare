@@ -308,8 +308,9 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     // camera frustums, horizon culling, and math scale to the Moon instead of Earth (WGS84)
     Cesium.Ellipsoid.default = Cesium.Ellipsoid.MOON;
 
-    // Disable default Ion token requirement for public lunar basemaps
-    Cesium.Ion.defaultAccessToken = '';
+    if ((import.meta as any).env?.VITE_CESIUM_ION_TOKEN) {
+      Cesium.Ion.defaultAccessToken = (import.meta as any).env.VITE_CESIUM_ION_TOKEN;
+    }
 
     const viewer = new Cesium.Viewer(container, {
       ellipsoid: Cesium.Ellipsoid.MOON,
@@ -793,10 +794,20 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       setAltitudeKm(Math.max(0.1, Math.round((altMeters / 1000) * 10) / 10));
     });
 
-    // Add Clean High-Resolution Lunar Basemap (Cesium standard OpenPlanetaryMap Moon mosaic)
+    // Force render on tile load completion so polar tiles repaint as soon as they finish downloading
+    viewer.scene.globe.tileLoadProgressEvent.addEventListener((queuedTileCount) => {
+      if (queuedTileCount === 0 && !viewer.isDestroyed()) {
+        viewer.scene.requestRender();
+      }
+    });
+
+    // Add High-Resolution Geographic Lunar Basemap (GeographicTilingScheme EPSG:4326 reaching ±90°)
     try {
       const moonImagery = new Cesium.UrlTemplateImageryProvider({
         url: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png',
+        tilingScheme: new Cesium.GeographicTilingScheme({
+          ellipsoid: Cesium.Ellipsoid.MOON,
+        }),
         ellipsoid: Cesium.Ellipsoid.MOON,
         maximumLevel: 9,
       });
@@ -804,6 +815,32 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     } catch {
       // Fallback to base color if network blocked
     }
+
+    // Recommended: Load Official Cesium Moon 3D Tileset (Asset ID 2684829 on Cesium ion)
+    // Eliminates polar pinching and holes at the South/North poles with true 3D lunar geometry
+    Cesium.Cesium3DTileset.fromIonAssetId(2684829)
+      .then((moonTileset) => {
+        if (!viewer.isDestroyed()) {
+          viewer.scene.globe.show = false;
+          viewer.scene.primitives.add(moonTileset);
+
+          moonTileset.allTilesLoaded?.addEventListener(() => {
+            if (!viewer.isDestroyed()) viewer.scene.requestRender();
+          });
+          moonTileset.tileLoad?.addEventListener(() => {
+            if (!viewer.isDestroyed()) viewer.scene.requestRender();
+          });
+
+          viewer.scene.requestRender();
+        }
+      })
+      .catch((err) => {
+        console.warn('Cesium Moon 3D Tileset (Ion 2684829) load error, falling back to Geographic Globe:', err);
+        if (!viewer.isDestroyed()) {
+          viewer.scene.globe.show = true;
+          viewer.scene.requestRender();
+        }
+      });
 
     const removePreRender = () => {};
 
