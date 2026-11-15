@@ -334,9 +334,9 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.m
   ), [siteA, siteB, sunIntervalsA, earthIntervalsA, effectiveBothUpA, sunIntervalsB, earthIntervalsB, effectiveBothUpB, windowStartMs, durationMs]);
 
   return (
-    <div className="z-30 w-full h-full bg-space-950/98 px-4 py-2 shadow-2xl flex flex-col justify-between gap-1.5 select-none overflow-y-auto no-scrollbar">
+    <div className="z-30 w-full h-full bg-space-950/98 px-4 py-2.5 shadow-2xl flex flex-col justify-between gap-2 select-none overflow-y-auto no-scrollbar">
       {/* Dual-Location Telemetry Tracks Container */}
-      <div className="relative w-full flex flex-col gap-1.5 bg-space-900/95 rounded-xl p-2.5 border border-slate-800/90 shadow-inner font-mono">
+      <div className="relative w-full flex flex-col gap-2 bg-space-900/95 rounded-xl p-2.5 border border-slate-800/90 shadow-inner font-mono">
         {/* Track Header showing Start Date, Scrub Guide, and End Date */}
         <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono pb-1 border-b border-slate-800/60 select-none">
           <span className="flex items-center gap-1.5 text-emerald-400 font-bold">

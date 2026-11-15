@@ -813,9 +813,9 @@ export const App: React.FC = () => {
           {/* Bottom Resizable Timeline Panel */}
           <ResizablePanel
             id="timeline-dock"
-            defaultSize={210}
-            minSize={180}
-            maxSize={450}
+            defaultSize={260}
+            minSize={200}
+            maxSize={500}
             collapsible={true}
             collapsedSize={36}
             className="w-full bg-space-950/95 overflow-hidden flex flex-col"
