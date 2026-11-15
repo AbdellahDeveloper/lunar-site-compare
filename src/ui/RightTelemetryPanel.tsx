@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   EphemerisPoint,
   HorizonMask,
@@ -20,6 +20,7 @@ import {
   Orbit,
   Disc,
   ShieldAlert,
+  Crosshair,
 } from 'lucide-react';
 import {
   Button,
@@ -122,6 +123,148 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
       default:
         return 'critical';
     }
+  };
+
+  const [telemetryFilter, setTelemetryFilter] = useState<'both' | 'A' | 'B'>('both');
+
+  const getSunRemainingMs = (point: EphemerisPoint, evalData: ScenarioEvaluation): number | null => {
+    if (point.sun.isVisible) {
+      const curInt = evalData.sunIntervals.find((i) => point.timeMs >= i.startMs && point.timeMs <= i.endMs);
+      return curInt ? curInt.endMs - point.timeMs : null;
+    } else {
+      const nextInt = evalData.sunIntervals.find((i) => i.startMs > point.timeMs);
+      return nextInt ? nextInt.startMs - point.timeMs : null;
+    }
+  };
+
+  const getEarthRemainingMs = (point: EphemerisPoint, evalData: ScenarioEvaluation): number | null => {
+    if (point.earth.isVisible) {
+      const curInt = evalData.earthIntervals.find((i) => point.timeMs >= i.startMs && point.timeMs <= i.endMs);
+      return curInt ? curInt.endMs - point.timeMs : null;
+    } else {
+      const nextInt = evalData.earthIntervals.find((i) => i.startMs > point.timeMs);
+      return nextInt ? nextInt.startMs - point.timeMs : null;
+    }
+  };
+
+  const renderSiteTelemetryCard = (
+    site: Site,
+    evaluation: ScenarioEvaluation,
+    point: EphemerisPoint,
+    siteTag: 'A' | 'B',
+    onFlyTo?: () => void
+  ) => {
+    const isA = siteTag === 'A';
+    const accentBorder = isA
+      ? 'border-cyan-500/30 bg-space-900/90'
+      : 'border-amber-500/30 bg-space-900/90';
+    const textAccent = isA ? 'text-cyan-300' : 'text-amber-300';
+    const badgeVariant = isA ? 'cyan' : 'amber';
+    const sunRemaining = getSunRemainingMs(point, evaluation);
+    const earthRemaining = getEarthRemainingMs(point, evaluation);
+
+    return (
+      <div key={siteTag} className={`p-2.5 rounded-lg border ${accentBorder} flex flex-col gap-2 font-mono shadow-sm`}>
+        {/* Site Header: Label, Name, Jump, Feasibility */}
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Badge variant={badgeVariant} className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
+              SITE {siteTag}
+            </Badge>
+            <span className={`font-bold ${textAccent} text-[11px] truncate`} title={site.name}>
+              {site.name.split('(')[0].trim()}
+            </span>
+            {onFlyTo && (
+              <button
+                type="button"
+                onClick={onFlyTo}
+                title={`Recon: Fly camera to ${site.name}`}
+                className={`p-0.5 rounded hover:bg-space-800 transition-colors ${
+                  isA ? 'text-cyan-400 hover:text-cyan-200' : 'text-amber-400 hover:text-amber-200'
+                }`}
+              >
+                <Crosshair className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          <Badge variant={getVerdictVariant(evaluation.verdict.tier)} className="text-[9px] shrink-0">
+            {evaluation.verdict.title}
+          </Badge>
+        </div>
+
+        {/* Real-time Countdowns */}
+        <div className="grid grid-cols-2 gap-1.5 text-xs">
+          <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+            <span className="text-[9px] text-slate-400 flex items-center gap-1">
+              SUNLIGHT
+              <InfoTooltip text="Duration until next sunset or sunrise." />
+            </span>
+            <span className={`text-[11px] font-bold ${point.sun.isVisible ? 'text-solar-gold' : 'text-slate-400'} mt-0.5 truncate`}>
+              {point.sun.isVisible ? 'LIT' : 'SHADOW'}{' '}
+              <span className="text-[10px] font-normal text-slate-300">
+                ({formatCountdown(sunRemaining)})
+              </span>
+            </span>
+          </div>
+
+          <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+            <span className="text-[9px] text-slate-400 flex items-center gap-1">
+              DTE COMM
+              <InfoTooltip text="Duration of continuous direct-to-Earth communication." />
+            </span>
+            <span className={`text-[11px] font-bold ${point.earth.isVisible ? (isA ? 'text-cyan-400' : 'text-amber-400') : 'text-slate-400'} mt-0.5 truncate`}>
+              {point.earth.isVisible ? 'LINK UP' : 'BLACKOUT'}{' '}
+              <span className="text-[10px] font-normal text-slate-300">
+                ({formatCountdown(earthRemaining)})
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {/* Power & RF Metrics */}
+        <div className="flex flex-col gap-1 text-[11px]">
+          <div className="flex items-center justify-between p-1.5 bg-space-950/60 rounded border border-slate-800/60">
+            <span className="text-slate-400 text-[10px] flex items-center gap-1">
+              SOLAR POWER FLUX
+              <InfoTooltip text="Instantaneous solar irradiance (W/m²) received at current sun elevation." />
+            </span>
+            <span className="text-solar-gold font-bold">
+              {point.trackingPowerFlux.toFixed(0)} W/m²
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between p-1.5 bg-space-950/60 rounded border border-slate-800/60">
+            <span className="text-slate-400 text-[10px] flex items-center gap-1">
+              DTE LINK MARGIN
+              <InfoTooltip text="Direct-to-Earth RF carrier-to-noise margin above receiver threshold." />
+            </span>
+            <span className={`font-bold ${point.earth.isVisible ? (isA ? 'text-cyan-400' : 'text-amber-400') : 'text-slate-500'}`}>
+              {point.earth.isVisible ? '+14.2 dB' : 'NO LINK'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between p-1.5 bg-space-950/60 rounded border border-slate-800/60">
+            <span className="text-slate-400 text-[10px] flex items-center gap-1">
+              SUN ANGLE
+              <InfoTooltip text="Elevation and Azimuth angles of the Sun relative to local horizon frame." />
+            </span>
+            <span className="text-slate-200 text-[10px]">
+              {point.sun.elevationDeg >= 0 ? '+' : ''}{point.sun.elevationDeg.toFixed(1)}° el, {point.sun.azimuthDeg.toFixed(0)}° az
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between p-1.5 bg-space-950/60 rounded border border-slate-800/60">
+            <span className="text-slate-400 text-[10px] flex items-center gap-1">
+              EARTH ANGLE
+              <InfoTooltip text="Elevation and Azimuth angles of Earth relative to local horizon frame." />
+            </span>
+            <span className="text-slate-200 text-[10px]">
+              {point.earth.elevationDeg >= 0 ? '+' : ''}{point.earth.elevationDeg.toFixed(1)}° el, {point.earth.azimuthDeg.toFixed(0)}° az
+            </span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Determine current active section for Right Sidebar
@@ -414,47 +557,81 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* ============================================================== */}
           {isShadingMode && (
             <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <Card className="p-2.5 bg-space-900 border-slate-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    SUN ELEVATION
-                    <InfoTooltip text="Instantaneous topocentric elevation angle of the Sun." />
+              {/* Site A Shading Card */}
+              <div className="p-2.5 bg-space-900/90 rounded-lg border border-cyan-500/30 flex flex-col gap-2">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Badge variant="cyan" className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
+                      SITE A
+                    </Badge>
+                    <span className="font-bold text-cyan-300 text-[11px] truncate">
+                      {siteA.name.split('(')[0].trim()}
+                    </span>
+                  </div>
+                  <span className="text-solar-gold font-bold text-xs">
+                    {currentPointA.sun.elevationDeg >= 0 ? '+' : ''}{currentPointA.sun.elevationDeg.toFixed(2)}° Sun El
                   </span>
-                  <span className="text-solar-gold font-bold text-base mt-0.5">
-                    {currentPointA.sun.elevationDeg >= 0 ? '+' : ''}{currentPointA.sun.elevationDeg.toFixed(2)}°
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-xs">
+                  <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                    <span className="text-[9px] text-slate-400">DUTY CYCLE</span>
+                    <span className="text-emerald-400 font-bold text-sm mt-0.5">
+                      {evaluationA.metrics.sunlightPercent.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                    <span className="text-[9px] text-slate-400">DAYLIGHT</span>
+                    <span className="text-solar-gold font-bold text-xs mt-0.5 truncate">
+                      {formatCountdown(evaluationA.metrics.longestLightHours * 3600 * 1000)}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-1.5 bg-space-950/60 rounded border border-slate-800/60 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 text-[10px]">LONGEST NIGHT</span>
+                  <span className="text-rose-400 font-bold">
+                    {formatCountdown(evaluationA.metrics.longestDarkHours * 3600 * 1000)}
                   </span>
-                </Card>
-
-                <Card className="p-2.5 bg-space-900 border-slate-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    DUTY CYCLE
-                    <InfoTooltip text="Total percentage of time site receives sunlight across the window." />
-                  </span>
-                  <span className="text-emerald-400 font-bold text-base mt-0.5">
-                    {evaluationA.metrics.sunlightPercent.toFixed(1)}%
-                  </span>
-                </Card>
+                </div>
               </div>
 
-              <Card className="p-2.5 bg-space-900/60 border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
-                  LONGEST DAYLIGHT
-                  <InfoTooltip text="Maximum unbroken period of continuous solar illumination." />
-                </span>
-                <span className="text-solar-gold font-bold">
-                  {formatCountdown(evaluationA.metrics.longestLightHours * 3600 * 1000)}
-                </span>
-              </Card>
-
-              <Card className="p-2.5 bg-space-900/60 border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
-                  LONGEST NIGHT
-                  <InfoTooltip text="Maximum unbroken period spent in crater rim shadow." />
-                </span>
-                <span className="text-rose-400 font-bold">
-                  {formatCountdown(evaluationA.metrics.longestDarkHours * 3600 * 1000)}
-                </span>
-              </Card>
+              {/* Site B Shading Card */}
+              {siteB && evaluationB && currentPointB && (
+                <div className="p-2.5 bg-space-900/90 rounded-lg border border-amber-500/30 flex flex-col gap-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Badge variant="amber" className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
+                        SITE B
+                      </Badge>
+                      <span className="font-bold text-amber-300 text-[11px] truncate">
+                        {siteB.name.split('(')[0].trim()}
+                      </span>
+                    </div>
+                    <span className="text-solar-gold font-bold text-xs">
+                      {currentPointB.sun.elevationDeg >= 0 ? '+' : ''}{currentPointB.sun.elevationDeg.toFixed(2)}° Sun El
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 text-xs">
+                    <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                      <span className="text-[9px] text-slate-400">DUTY CYCLE</span>
+                      <span className="text-emerald-400 font-bold text-sm mt-0.5">
+                        {evaluationB.metrics.sunlightPercent.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                      <span className="text-[9px] text-slate-400">DAYLIGHT</span>
+                      <span className="text-solar-gold font-bold text-xs mt-0.5 truncate">
+                        {formatCountdown(evaluationB.metrics.longestLightHours * 3600 * 1000)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-1.5 bg-space-950/60 rounded border border-slate-800/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400 text-[10px]">LONGEST NIGHT</span>
+                    <span className="text-rose-400 font-bold">
+                      {formatCountdown(evaluationB.metrics.longestDarkHours * 3600 * 1000)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -463,104 +640,59 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* ============================================================== */}
           {isTelemetryMode && (
             <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
-              {/* Verdict Header */}
-              <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-xs">
-                <span className="text-slate-400 flex items-center gap-1">
-                  FEASIBILITY
-                  <InfoTooltip text="Combined multi-criteria landing score evaluating solar flux, DTE comms, and slope." />
-                </span>
-                <Badge variant={getVerdictVariant(evaluationA.verdict.tier)}>
-                  {evaluationA.verdict.title}
-                </Badge>
-              </div>
-
-              {/* Real-time Countdowns */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <Card className="p-2 bg-space-900 border-slate-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    SUNLIGHT
-                    <InfoTooltip text="Duration until next sunset or sunrise." />
+              {/* Header with Site Filter Tabs */}
+              {siteB && evaluationB && currentPointB && (
+                <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-xs">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                    TARGET TELEMETRY
                   </span>
-                  <span className="text-xs font-bold text-solar-gold mt-0.5 truncate">
-                    {currentPointA.sun.isVisible ? 'LIT' : 'SHADOW'}{' '}
-                    ({formatCountdown(
-                      (() => {
-                        if (currentPointA.sun.isVisible) {
-                          const curInt = evaluationA.sunIntervals.find(i => currentPointA.timeMs >= i.startMs && currentPointA.timeMs <= i.endMs);
-                          return curInt ? curInt.endMs - currentPointA.timeMs : null;
-                        } else {
-                          const nextInt = evaluationA.sunIntervals.find(i => i.startMs > currentPointA.timeMs);
-                          return nextInt ? nextInt.startMs - currentPointA.timeMs : null;
-                        }
-                      })()
-                    )})
-                  </span>
-                </Card>
-
-                <Card className="p-2 bg-space-900 border-slate-800 flex flex-col">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    DTE COMM
-                    <InfoTooltip text="Duration of continuous direct-to-Earth communication." />
-                  </span>
-                  <span className="text-xs font-bold text-cyan-400 mt-0.5 truncate">
-                    {currentPointA.earth.isVisible ? 'LINK UP' : 'BLACKOUT'}{' '}
-                    ({formatCountdown(
-                      (() => {
-                        if (currentPointA.earth.isVisible) {
-                          const curInt = evaluationA.earthIntervals.find(i => currentPointA.timeMs >= i.startMs && currentPointA.timeMs <= i.endMs);
-                          return curInt ? curInt.endMs - currentPointA.timeMs : null;
-                        } else {
-                          const nextInt = evaluationA.earthIntervals.find(i => i.startMs > currentPointA.timeMs);
-                          return nextInt ? nextInt.startMs - currentPointA.timeMs : null;
-                        }
-                      })()
-                    )})
-                  </span>
-                </Card>
-              </div>
-
-              {/* Power & RF Metrics */}
-              <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800 text-[11px]">
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    SOLAR POWER FLUX
-                    <InfoTooltip text="Instantaneous solar irradiance (W/m²) received at current sun elevation." />
-                  </span>
-                  <span className="text-solar-gold font-bold">
-                    {currentPointA.trackingPowerFlux.toFixed(0)} W/m²
-                  </span>
+                  <div className="flex items-center gap-1 bg-space-900 p-0.5 rounded border border-slate-800 text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setTelemetryFilter('both')}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        telemetryFilter === 'both'
+                          ? 'bg-cyan-500/25 text-cyan-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      BOTH
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTelemetryFilter('A')}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        telemetryFilter === 'A'
+                          ? 'bg-cyan-500/25 text-cyan-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      SITE A
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTelemetryFilter('B')}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        telemetryFilter === 'B'
+                          ? 'bg-amber-500/25 text-amber-300 font-bold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      SITE B
+                    </button>
+                  </div>
                 </div>
+              )}
 
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    DTE LINK MARGIN
-                    <InfoTooltip text="Direct-to-Earth RF carrier-to-noise margin above receiver threshold." />
-                  </span>
-                  <span className={`font-bold ${currentPointA.earth.isVisible ? 'text-cyan-400' : 'text-slate-500'}`}>
-                    {currentPointA.earth.isVisible ? '+14.2 dB' : 'NO LINK'}
-                  </span>
-                </div>
+              {/* Render Site Telemetry Cards */}
+              {(telemetryFilter === 'both' || telemetryFilter === 'A') &&
+                renderSiteTelemetryCard(siteA, evaluationA, currentPointA, 'A', onFlyToSiteA)}
 
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    SUN ANGLE
-                    <InfoTooltip text="Elevation and Azimuth angles of the Sun relative to local horizon frame." />
-                  </span>
-                  <span className="text-slate-200">
-                    {currentPointA.sun.elevationDeg >= 0 ? '+' : ''}{currentPointA.sun.elevationDeg.toFixed(1)}° el, {currentPointA.sun.azimuthDeg.toFixed(0)}° az
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-slate-400 flex items-center gap-1">
-                    EARTH ANGLE
-                    <InfoTooltip text="Elevation and Azimuth angles of Earth relative to local horizon frame." />
-                  </span>
-                  <span className="text-slate-200">
-                    {currentPointA.earth.elevationDeg >= 0 ? '+' : ''}{currentPointA.earth.elevationDeg.toFixed(1)}° el, {currentPointA.earth.azimuthDeg.toFixed(0)}° az
-                  </span>
-                </div>
-              </div>
+              {siteB &&
+                evaluationB &&
+                currentPointB &&
+                (telemetryFilter === 'both' || telemetryFilter === 'B') &&
+                renderSiteTelemetryCard(siteB, evaluationB, currentPointB, 'B', onFlyToSiteB)}
             </div>
           )}
         </div>
