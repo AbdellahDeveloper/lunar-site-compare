@@ -1734,14 +1734,14 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
         {/* Active 3D Location Picker Guidance Banner */}
         {isPickingLocation && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-4 py-2 rounded-full bg-space-950/95 border border-cyan-400 text-cyan-200 text-xs font-mono shadow-2xl backdrop-blur-md animate-fade-in">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping inline-block" />
-            <span className="font-bold text-slate-100">Click anywhere on lunar surface to pick site</span>
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1 rounded-full bg-space-950/95 border border-cyan-400/60 text-cyan-200 text-[10px] font-mono shadow-2xl backdrop-blur-md animate-fade-in whitespace-nowrap select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping inline-block shrink-0" />
+            <span className="font-medium text-slate-100 whitespace-nowrap">Click anywhere on lunar surface to pick site</span>
             <Button
               variant="ghost"
               size="xs"
               onClick={onCancelPickLocation}
-              className="h-5 px-2 text-[10px] text-slate-300 hover:text-white bg-space-900 border border-slate-700 rounded-full ml-1"
+              className="h-4.5 px-2 text-[9px] text-slate-300 hover:text-white bg-space-900 border border-slate-700 rounded-full ml-1 whitespace-nowrap"
             >
               Cancel (Esc)
             </Button>
