@@ -1,4 +1,5 @@
-import { DialogContent, DialogDescription, DialogHeader, DialogTitle, ResizableHandle, ResizablePanel, ResizablePanelGroup, usePanelRef } from '@/components/ui';
+import { Button, DialogContent, DialogDescription, DialogHeader, DialogTitle, ResizableHandle, ResizablePanel, ResizablePanelGroup, usePanelRef } from '@/components/ui';
+import { Crosshair, X } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PRECOMPUTED_HORIZONS, generateCustomHorizon } from './data/horizons';
 import { LUNAR_SITES } from './data/sites';
@@ -585,6 +586,7 @@ export const App: React.FC = () => {
         activeTool={activeTool}
         onSelectTool={handleSelectTool}
         showGraticule={showGraticule}
+        onShareUrl={handleShareUrl}
       />
 
       {/* Main Mission Operations Center with Nested Resizable Panels (Vertical Group for Workspace & Timeline) */}
@@ -655,6 +657,36 @@ export const App: React.FC = () => {
 
               {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
               <ResizablePanel id="center-viewport" minSize={360} className="relative h-full">
+                {/* Floating HUD for Active 3D Point Picking Mode */}
+                {isPicking3DLocation && (
+                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+                    <div className="bg-space-950/95 backdrop-blur-md border border-cyan-500/40 rounded-xl px-3.5 py-2 shadow-2xl flex items-center gap-3 text-xs font-mono text-slate-100 ring-1 ring-cyan-500/20 max-w-lg">
+                      <div className="w-6 h-6 rounded-md bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center text-cyan-400 shrink-0">
+                        <Crosshair className="w-3.5 h-3.5 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-cyan-300 text-xs">
+                          {uiMode === 'simple' ? 'Click Moon to Pick Site' : '3D Coordinate Picker'}
+                        </div>
+                        <p className="text-slate-400 text-[10px] leading-tight">
+                          {uiMode === 'simple'
+                            ? 'Click anywhere directly on the 3D Moon surface to set Location A or B.'
+                            : 'Click on the 3D lunar surface to sample topocentric coordinates.'}
+                        </p>
+                      </div>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={handleCancelPick}
+                        className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 text-xs h-7 px-1.5 ml-2"
+                        title="Cancel (Esc)"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Floating HUD for Active ROI Drawing Mode */}
                 {isDrawingRoi && (
                   <RoiDrawingHud

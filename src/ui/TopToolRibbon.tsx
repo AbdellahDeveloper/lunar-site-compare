@@ -2,6 +2,7 @@ import { Button, Card, Tooltip } from '@/components/ui';
 import {
   Award,
   Camera,
+  Check,
   ChevronLeft,
   ChevronRight,
   Compass,
@@ -11,11 +12,12 @@ import {
   MapPin,
   Radio,
   Rocket,
+  Share2,
   ShieldAlert,
   Sparkles,
   Sun,
 } from 'lucide-react';
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { UIMode } from '../types';
 
 export interface RibbonTool {
@@ -30,31 +32,31 @@ export interface RibbonTool {
 
 export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
   {
+    id: 'search-lunar',
+    label: 'Click Moon to Pick',
+    icon: Crosshair,
+    targetPanel: 'viewport',
+    targetDescription: 'Click anywhere directly on the 3D Moon to choose a custom location for Site A or B',
+    category: 'Mission Planning',
+    badgeText: '3D Click',
+  },
+  {
     id: 'roi-optimizer',
-    label: 'Find My Base',
+    label: 'Zone Selection Tool',
     icon: Sparkles,
     targetPanel: 'viewport',
-    targetDescription: 'Draw a shape on the Moon to discover the optimal Artemis base location',
+    targetDescription: 'Draw an exploration boundary directly on the Moon to discover the optimal Artemis base',
     category: 'Mission Planning',
-    badgeText: 'Draw Tool',
+    badgeText: 'Draw Zone',
   },
   {
     id: 'landing-sites',
     label: 'Choose Sites',
     icon: Rocket,
     targetPanel: 'left',
-    targetDescription: 'Select Artemis candidate locations for Site A and Site B',
+    targetDescription: 'Select Artemis candidate locations for Site A and Site B in the left sidebar',
     category: 'Mission Planning',
     badgeText: 'Sites A/B',
-  },
-  {
-    id: 'my-badge',
-    label: 'Claim Badge',
-    icon: Award,
-    targetPanel: 'modal',
-    targetDescription: 'View, customize, save, and share your official Artemis Astronaut Moon Base Badge',
-    category: 'Mission Planning',
-    badgeText: 'Badge',
   },
 ];
 
@@ -174,6 +176,7 @@ interface TopToolRibbonProps {
   onSelectTool: (toolId: string) => void;
   showGraticule?: boolean;
   uiMode?: UIMode;
+  onShareUrl?: () => void;
 }
 
 export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
@@ -181,9 +184,17 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
   onSelectTool,
   showGraticule = true,
   uiMode = 'detailed',
+  onShareUrl,
 }) => {
+  const [copied, setCopied] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const activeTools = uiMode === 'simple' ? SIMPLE_RIBBON_TOOLS : RIBBON_TOOLS;
+
+  const handleShareClick = () => {
+    onShareUrl?.();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -324,6 +335,57 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
       >
         <ChevronRight className="w-4 h-4" />
       </Button>
+
+      {/* Right-aligned Share Tool Card in Simple View */}
+      {uiMode === 'simple' && onShareUrl && (
+        <div className="ml-auto pl-2 border-l border-slate-800 shrink-0">
+          <Tooltip
+            side="bottom"
+            content={
+              <div className="flex flex-col gap-1 max-w-xs">
+                <span className="font-bold text-slate-100 text-xs">Share Mission</span>
+                <p className="text-[11px] text-slate-300">
+                  Copy a shareable link with current sites and analysis parameters.
+                </p>
+              </div>
+            }
+          >
+            <Card
+              onClick={handleShareClick}
+              className={`flex flex-col items-center justify-between p-2 min-w-[96px] h-[66px] rounded-lg cursor-pointer transition-all duration-200 border text-center group ${
+                copied
+                  ? 'bg-emerald-950/50 border-emerald-500/80 text-emerald-200 shadow-md shadow-emerald-950/40 ring-1 ring-emerald-500/50'
+                  : 'bg-space-900/70 border-slate-800/90 text-slate-300 hover:bg-space-850 hover:border-slate-700 hover:text-slate-100'
+              }`}
+            >
+              <div className="relative flex items-center justify-center">
+                {copied ? (
+                  <Check className="w-5 h-5 text-emerald-400 stroke-[2.2]" />
+                ) : (
+                  <Share2 className="w-5 h-5 text-cyan-400 stroke-[2.2] group-hover:scale-110 transition-transform" />
+                )}
+              </div>
+
+              <div className="flex flex-col items-center">
+                <span className={`text-[10.5px] font-medium leading-tight ${copied ? 'font-bold text-emerald-300' : 'text-slate-200'}`}>
+                  {copied ? 'Copied!' : 'Share'}
+                </span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span
+                    className={`text-[8.5px] uppercase font-mono tracking-tight px-1 rounded-sm border ${
+                      copied
+                        ? 'border-emerald-500/50 text-emerald-300 bg-emerald-950/60'
+                        : 'border-slate-800 text-slate-500 bg-space-950/60 group-hover:text-slate-400'
+                    }`}
+                  >
+                    {copied ? 'Link Ready' : 'Share Link'}
+                  </span>
+                </div>
+              </div>
+            </Card>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 });
