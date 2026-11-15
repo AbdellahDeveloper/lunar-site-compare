@@ -878,13 +878,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       }
     });
 
-    // Add High-Resolution Geographic Lunar Basemap (GeographicTilingScheme EPSG:4326 reaching ±90°)
+    // Add Clean High-Resolution Lunar Basemap (Cesium standard OpenPlanetaryMap Moon mosaic)
     try {
       const moonImagery = new Cesium.UrlTemplateImageryProvider({
         url: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png',
-        tilingScheme: new Cesium.GeographicTilingScheme({
-          ellipsoid: Cesium.Ellipsoid.MOON,
-        }),
         ellipsoid: Cesium.Ellipsoid.MOON,
         maximumLevel: 9,
       });
