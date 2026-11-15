@@ -9,7 +9,6 @@ import {
   UIMode,
 } from '../types';
 import { SkyPlot } from './SkyPlot';
-import { ElevationProfileChart } from './ElevationProfileChart';
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,7 +16,6 @@ import {
   Eye,
   Camera,
   Globe,
-  Activity,
   Sun,
   Orbit,
   Disc,
@@ -127,7 +125,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   };
 
   // Determine current active section for Right Sidebar
-  const isElevationMode = activeTool === 'terrain-profile';
   const isSightlinesMode = activeTool === 'sight-lines';
   const isPolarSkyMode = activeTool === 'polar-sky';
   const isMonteCarloMode = activeTool === 'monte-carlo';
@@ -135,15 +132,13 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   const isShadingMode = activeTool === 'moon-shading';
   const isTelemetryMode =
     activeTool === 'measurements' ||
-    (!isElevationMode &&
-      !isSightlinesMode &&
+    (!isSightlinesMode &&
       !isPolarSkyMode &&
       !isMonteCarloMode &&
       !isCameraMode &&
       !isShadingMode);
 
   const getSectionTitle = () => {
-    if (isElevationMode) return 'Terrain Profile';
     if (isSightlinesMode) return 'Sight Lines & Rays';
     if (isPolarSkyMode) return 'Polar Sky Plot';
     if (isMonteCarloMode) return 'Monte Carlo Risk';
@@ -178,7 +173,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* Minimalist Section Header */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
             <div className="flex items-center gap-1.5">
-              {isElevationMode && <Activity className="w-3.5 h-3.5 text-cyan-400" />}
               {isSightlinesMode && <Eye className="w-3.5 h-3.5 text-amber-400" />}
               {isPolarSkyMode && <Disc className="w-3.5 h-3.5 text-cyan-400" />}
               {isMonteCarloMode && <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />}
@@ -190,9 +184,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
               </span>
               <InfoTooltip
                 text={
-                  isElevationMode
-                    ? 'Topographic horizon mask H(α) vs. Sun and Earth elevation h(t) over time.'
-                    : isSightlinesMode
+                  isSightlinesMode
                     ? 'Line-of-sight laser rays and apparent celestial ephemeris trails.'
                     : isPolarSkyMode
                     ? 'Polar radar azimuth-elevation projection with local terrain occlusion.'
@@ -208,62 +200,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
             </div>
           </div>
 
-          {/* ============================================================== */}
-          {/* 1. TERRAIN PROFILE [h(t)]                                      */}
-          {/* ============================================================== */}
-          {isElevationMode && (
-            <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
-              {/* Clearance Status Cards */}
-              <div className="grid grid-cols-2 gap-2 text-[10px]">
-                <Card className="p-2 bg-space-900/80 border-slate-800">
-                  <div className="flex items-center justify-between text-slate-400 mb-0.5">
-                    <span>SOLAR CLEARANCE</span>
-                    <InfoTooltip text="Clearance above terrain: C(t) = h(t) - H(α). Positive means direct line-of-sight; negative means occluded." />
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      currentPointA.sun.clearanceDeg !== undefined && currentPointA.sun.clearanceDeg > 0
-                        ? 'text-emerald-400'
-                        : 'text-rose-400'
-                    }`}
-                  >
-                    {currentPointA.sun.clearanceDeg !== undefined
-                      ? `${currentPointA.sun.clearanceDeg >= 0 ? '+' : ''}${currentPointA.sun.clearanceDeg.toFixed(1)}°`
-                      : `${currentPointA.sun.elevationDeg >= 0 ? '+' : ''}${currentPointA.sun.elevationDeg.toFixed(1)}°`}
-                  </span>
-                </Card>
-
-                <Card className="p-2 bg-space-900/80 border-slate-800">
-                  <div className="flex items-center justify-between text-slate-400 mb-0.5">
-                    <span>EARTH CLEARANCE</span>
-                    <InfoTooltip text="Clearance of direct-to-Earth communication link above local horizon peaks." />
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      currentPointA.earth.clearanceDeg !== undefined && currentPointA.earth.clearanceDeg > 0
-                        ? 'text-cyan-400'
-                        : 'text-amber-400'
-                    }`}
-                  >
-                    {currentPointA.earth.clearanceDeg !== undefined
-                      ? `${currentPointA.earth.clearanceDeg >= 0 ? '+' : ''}${currentPointA.earth.clearanceDeg.toFixed(1)}°`
-                      : `${currentPointA.earth.elevationDeg >= 0 ? '+' : ''}${currentPointA.earth.elevationDeg.toFixed(1)}°`}
-                  </span>
-                </Card>
-              </div>
-
-              {/* Authentic Elevation vs Time Profile Chart */}
-              <ElevationProfileChart
-                points={allPointsA}
-                currentScrubMs={currentPointA.timeMs}
-                onScrub={onScrub}
-                siteName={siteA.name}
-                windowStartMs={windowStartMs}
-                windowEndMs={windowEndMs}
-                height={260}
-              />
-            </div>
-          )}
 
           {/* ============================================================== */}
           {/* 2. SIGHT LINES & 3D RAYS                                       */}

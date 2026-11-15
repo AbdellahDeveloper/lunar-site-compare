@@ -140,7 +140,6 @@ export const App: React.FC = () => {
     const leftTools = ['landing-sites', 'layer-management', 'coordinates', 'placemarks', 'graticule'];
     const rightTools = [
       'measurements',
-      'terrain-profile',
       'sight-lines',
       'polar-sky',
       'monte-carlo',

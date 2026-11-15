@@ -1,7 +1,6 @@
 import React, { useRef } from 'react';
 import {
   Layers,
-  Activity,
   Compass,
   Eye,
   Rocket,
@@ -57,15 +56,6 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     targetDescription: 'Selenocentric lat/lon, polar stereographic projection, distance and azimuth bearing',
     category: 'GIS & Mapping',
     badgeText: 'Coords',
-  },
-  {
-    id: 'terrain-profile',
-    label: 'Terrain Profile [h(t)]',
-    icon: Activity,
-    targetPanel: 'right',
-    targetDescription: 'LOLA topographic horizon mask H(α), Sun & Earth elevation curves h(t), and solar clearance C(t)',
-    category: 'Telemetry & Analysis',
-    badgeText: 'H(α) & C(t)',
   },
   {
     id: 'sight-lines',
