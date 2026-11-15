@@ -890,35 +890,32 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       // Fallback to base color if network blocked
     }
 
-    // Optional Cesium Ion Moon 3D Tileset (only loaded if user configured a personal token)
-    // If no custom token is set, we stick to the 100% free GeographicTilingScheme globe
-    // so no account or token is ever required, avoiding all Cesium Ion banners.
-    const customIonToken = (import.meta as any).env?.VITE_CESIUM_ION_TOKEN;
-    if (customIonToken) {
-      Cesium.Cesium3DTileset.fromIonAssetId(2684829)
-        .then((moonTileset) => {
-          if (!viewer.isDestroyed()) {
-            viewer.scene.globe.show = false;
-            viewer.scene.primitives.add(moonTileset);
+    // Recommended: Load Official Cesium Moon 3D Tileset (Asset ID 2684829 on Cesium ion)
+    // Instead of rendering the Moon on Cesium.Globe with 2D raster tiles (which struggle with polar pinching),
+    // load the Cesium Moon 3D Tileset and hide the default globe.
+    Cesium.Cesium3DTileset.fromIonAssetId(2684829)
+      .then((moonTileset) => {
+        if (!viewer.isDestroyed()) {
+          viewer.scene.globe.show = false;
+          viewer.scene.primitives.add(moonTileset);
 
-            moonTileset.allTilesLoaded?.addEventListener(() => {
-              if (!viewer.isDestroyed()) viewer.scene.requestRender();
-            });
-            moonTileset.tileLoad?.addEventListener(() => {
-              if (!viewer.isDestroyed()) viewer.scene.requestRender();
-            });
+          moonTileset.allTilesLoaded?.addEventListener(() => {
+            if (!viewer.isDestroyed()) viewer.scene.requestRender();
+          });
+          moonTileset.tileLoad?.addEventListener(() => {
+            if (!viewer.isDestroyed()) viewer.scene.requestRender();
+          });
 
-            viewer.scene.requestRender();
-          }
-        })
-        .catch((err) => {
-          console.warn('Cesium Moon 3D Tileset (Ion 2684829) load error, falling back to Geographic Globe:', err);
-          if (!viewer.isDestroyed()) {
-            viewer.scene.globe.show = true;
-            viewer.scene.requestRender();
-          }
-        });
-    }
+          viewer.scene.requestRender();
+        }
+      })
+      .catch((err) => {
+        console.warn('Cesium Moon 3D Tileset (Ion 2684829) load error, falling back to 2D globe:', err);
+        if (!viewer.isDestroyed()) {
+          viewer.scene.globe.show = true;
+          viewer.scene.requestRender();
+        }
+      });
 
     const removePreRender = () => {};
 
