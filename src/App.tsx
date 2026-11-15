@@ -575,9 +575,44 @@ export const App: React.FC = () => {
     setShowMissionOverviewModal(false);
   }, []);
 
-  // Keyboard shortcut: Escape cancels 3D pick mode or ROI drawing mode
+  // Global Keyboard shortcuts:
+  // - Space: Toggle simulation playback (with end-of-timeline auto-rewind)
+  // - Escape: Cancel 3D pick mode or ROI drawing mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore when user is actively typing in form inputs, textareas, or contentEditable fields
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.code === 'Space' || e.key === ' ') {
+        // Don't toggle playback if modal dialogs are open
+        const isAnyModalOpen =
+          showSlipModal ||
+          showAlternativesModal ||
+          showMapPickerModal ||
+          showLearnTourModal ||
+          showExportModal ||
+          showMissionOverviewModal ||
+          showBadgeModal ||
+          showDesignateSiteModal ||
+          showRoiResultModal;
+        if (isAnyModalOpen) return;
+
+        e.preventDefault();
+        setIsPlaying((prev) => {
+          if (!prev && currentScrubMs >= windowEndMs) {
+            setCurrentScrubMs(windowStartMs);
+          }
+          return !prev;
+        });
+        return;
+      }
+
       if (e.key === 'Escape') {
         if (isDrawingRoi) {
           handleCancelRoi();
@@ -588,7 +623,22 @@ export const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPicking3DLocation, isDrawingRoi]);
+  }, [
+    isPicking3DLocation,
+    isDrawingRoi,
+    currentScrubMs,
+    windowStartMs,
+    windowEndMs,
+    showSlipModal,
+    showAlternativesModal,
+    showMapPickerModal,
+    showLearnTourModal,
+    showExportModal,
+    showMissionOverviewModal,
+    showBadgeModal,
+    showDesignateSiteModal,
+    showRoiResultModal,
+  ]);
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-space-950 text-slate-100 flex flex-col select-none">

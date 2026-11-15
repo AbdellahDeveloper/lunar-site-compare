@@ -11,6 +11,7 @@ import {
   Clock,
   Sparkles,
   Orbit,
+  Play,
 } from 'lucide-react';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, Card, Badge, Button } from '@/components/ui';
 
@@ -166,6 +167,15 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ onClose }) => {
           </div>
 
           <div className="flex flex-col gap-1.5 text-[11px]">
+            <div className="flex items-center justify-between text-slate-300">
+              <span className="flex items-center gap-1.5 text-cyan-300">
+                <Play className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Play / Pause Simulation:</span>
+              </span>
+              <kbd className="px-2 py-0.5 rounded bg-space-800 border border-slate-700 text-cyan-300 font-bold text-[10px]">
+                Space
+              </kbd>
+            </div>
             <div className="flex items-center justify-between text-slate-400">
               <span>Time Scrubbing:</span>
               <span className="text-slate-200 font-medium">Fluid Slider / Laser Needle</span>

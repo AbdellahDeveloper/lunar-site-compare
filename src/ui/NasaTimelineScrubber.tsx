@@ -425,6 +425,7 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.m
             variant={isPlaying ? 'solar' : 'nasa'}
             size="sm"
             onClick={onTogglePlay}
+            title={isPlaying ? 'Pause simulation (Space)' : 'Play simulation (Space)'}
             className="gap-1.5 px-3.5 font-bold"
           >
             {isPlaying ? (
