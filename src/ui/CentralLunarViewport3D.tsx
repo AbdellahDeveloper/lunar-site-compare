@@ -6,6 +6,7 @@ import {
   Site,
   Vector3D,
 } from '../types';
+import { getCachedCelestialVectors } from '../engine/series';
 import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles } from 'lucide-react';
 
 interface CentralLunarViewport3DProps {
@@ -283,39 +284,39 @@ export const CentralLunarViewport3D: React.FC<CentralLunarViewport3DProps> = ({
         sightlineEarth.visible = false;
       }
 
-      // Update Trajectory Arcs if available
-      if (showSunOrbit && allPointsA.length > 2) {
-        const sunPts = allPointsA.map((pt) => {
-          const azRad = (pt.sun.azimuthDeg * Math.PI) / 180;
-          const elRad = (pt.sun.elevationDeg * Math.PI) / 180;
-          // Sky trajectory ring around the Moon
-          const r = 7.5;
-          return new THREE.Vector3(
-            r * Math.cos(elRad) * Math.sin(azRad),
-            r * Math.sin(elRad),
-            r * Math.cos(elRad) * Math.cos(azRad)
-          );
-        });
-        sunOrbit.geometry.setFromPoints(sunPts);
-        sunOrbit.visible = true;
+      // Update Trajectory Arcs if available (passing directly through celestial models)
+      if ((showSunOrbit || showEarthOrbit) && allPointsA && allPointsA.length > 1) {
+        const startMs = allPointsA[0].timeMs;
+        const endMs = allPointsA[allPointsA.length - 1].timeMs;
+        const stepMs =
+          allPointsA.length > 1 && allPointsA[1].timeMs > allPointsA[0].timeMs
+            ? allPointsA[1].timeMs - allPointsA[0].timeMs
+            : 30 * 60 * 1000;
+        const celestial = getCachedCelestialVectors(startMs, endMs, stepMs);
+
+        if (showSunOrbit && celestial.sunVecs.length > 1) {
+          const sunPts = celestial.sunVecs.map((v) => {
+            const sDist = Math.hypot(v.x, v.y, v.z) || 1;
+            return new THREE.Vector3((v.y / sDist) * 15.0, (v.z / sDist) * 15.0, (v.x / sDist) * 15.0);
+          });
+          sunOrbit.geometry.setFromPoints(sunPts);
+          sunOrbit.visible = true;
+        } else {
+          sunOrbit.visible = false;
+        }
+
+        if (showEarthOrbit && celestial.earthVecs.length > 1) {
+          const earthPts = celestial.earthVecs.map((v) => {
+            const eDist = Math.hypot(v.x, v.y, v.z) || 1;
+            return new THREE.Vector3((v.y / eDist) * 11.0, (v.z / eDist) * 11.0, (v.x / eDist) * 11.0);
+          });
+          earthOrbit.geometry.setFromPoints(earthPts);
+          earthOrbit.visible = true;
+        } else {
+          earthOrbit.visible = false;
+        }
       } else {
         sunOrbit.visible = false;
-      }
-
-      if (showEarthOrbit && allPointsA.length > 2) {
-        const earthPts = allPointsA.map((pt) => {
-          const azRad = (pt.earth.azimuthDeg * Math.PI) / 180;
-          const elRad = (pt.earth.elevationDeg * Math.PI) / 180;
-          const r = 5.8;
-          return new THREE.Vector3(
-            r * Math.cos(elRad) * Math.sin(azRad),
-            r * Math.sin(elRad),
-            r * Math.cos(elRad) * Math.cos(azRad)
-          );
-        });
-        earthOrbit.geometry.setFromPoints(earthPts);
-        earthOrbit.visible = true;
-      } else {
         earthOrbit.visible = false;
       }
 

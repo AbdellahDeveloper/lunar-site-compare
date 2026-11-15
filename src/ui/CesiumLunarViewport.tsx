@@ -6,6 +6,10 @@ import {
   Site,
   Vector3D,
 } from '../types';
+import { getCachedCelestialVectors } from '../engine/series';
+
+const SUN_DISTANCE_METERS = 14000000.0;
+const EARTH_DISTANCE_METERS = 9000000.0;
 import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle, Orbit, Crosshair, MapPin } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { ShortcutsModal } from './ShortcutsModal';
@@ -276,8 +280,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   const spinSpeeds = [0.25, 0.55, 1.15];
 
   // Dynamic 3D celestial positions in Moon-fixed frame (evaluated at 60fps)
-  const sunPosRef = useRef<Cesium.Cartesian3>(new Cesium.Cartesian3(14000000, 0, 0));
-  const earthPosRef = useRef<Cesium.Cartesian3>(new Cesium.Cartesian3(9000000, 0, 0));
+  const sunPosRef = useRef<Cesium.Cartesian3>(new Cesium.Cartesian3(SUN_DISTANCE_METERS, 0, 0));
+  const earthPosRef = useRef<Cesium.Cartesian3>(new Cesium.Cartesian3(EARTH_DISTANCE_METERS, 0, 0));
 
   // Procedural celestial glow textures
   const sunCanvasRef = useRef<HTMLCanvasElement>(createSunCanvas());
@@ -892,11 +896,11 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   useEffect(() => {
     const sLen = Math.hypot(sunVec.x, sunVec.y, sunVec.z) || 1;
     const sunDir = new Cesium.Cartesian3(sunVec.x / sLen, sunVec.y / sLen, sunVec.z / sLen);
-    sunPosRef.current = Cesium.Cartesian3.multiplyByScalar(sunDir, 14000000.0, new Cesium.Cartesian3());
+    sunPosRef.current = Cesium.Cartesian3.multiplyByScalar(sunDir, SUN_DISTANCE_METERS, new Cesium.Cartesian3());
 
     const eLen = Math.hypot(earthVec.x, earthVec.y, earthVec.z) || 1;
     const earthDir = new Cesium.Cartesian3(earthVec.x / eLen, earthVec.y / eLen, earthVec.z / eLen);
-    earthPosRef.current = Cesium.Cartesian3.multiplyByScalar(earthDir, 9000000.0, new Cesium.Cartesian3());
+    earthPosRef.current = Cesium.Cartesian3.multiplyByScalar(earthDir, EARTH_DISTANCE_METERS, new Cesium.Cartesian3());
 
     const updateLight = (viewer: Cesium.Viewer | null) => {
       if (!viewer || viewer.isDestroyed()) return;
@@ -1419,55 +1423,64 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       });
     }
 
-    // 6. Apparent Trajectory Orbits in 3D Lunar Sky
-    if (showSunOrbit && allPointsA.length > 2) {
-      const sunArcPositions: Cesium.Cartesian3[] = [];
-      const orbitRadius = 7500000.0;
+    // 6. Apparent Trajectory Orbits in 3D Lunar Sky (passing directly through celestial models)
+    if ((showSunOrbit || showEarthOrbit) && allPointsA && allPointsA.length > 1) {
+      const startMs = allPointsA[0].timeMs;
+      const endMs = allPointsA[allPointsA.length - 1].timeMs;
+      const stepMs =
+        allPointsA.length > 1 && allPointsA[1].timeMs > allPointsA[0].timeMs
+          ? allPointsA[1].timeMs - allPointsA[0].timeMs
+          : 30 * 60 * 1000;
 
-      for (const pt of allPointsA) {
-        const azRad = (pt.sun.azimuthDeg * Math.PI) / 180;
-        const elRad = (pt.sun.elevationDeg * Math.PI) / 180;
-        const x = orbitRadius * Math.cos(elRad) * Math.sin(azRad);
-        const y = orbitRadius * Math.cos(elRad) * Math.cos(azRad);
-        const z = orbitRadius * Math.sin(elRad);
-        sunArcPositions.push(new Cesium.Cartesian3(x, y, z));
+      const celestial = getCachedCelestialVectors(startMs, endMs, stepMs);
+
+      if (showSunOrbit && celestial.sunVecs.length > 1) {
+        const sunArcPositions: Cesium.Cartesian3[] = [];
+        for (const v of celestial.sunVecs) {
+          const len = Math.hypot(v.x, v.y, v.z) || 1;
+          const sunDir = new Cesium.Cartesian3(v.x / len, v.y / len, v.z / len);
+          sunArcPositions.push(
+            Cesium.Cartesian3.multiplyByScalar(sunDir, SUN_DISTANCE_METERS, new Cesium.Cartesian3())
+          );
+        }
+
+        viewer.entities.add({
+          id: 'sun_trajectory_orbit',
+          name: 'Sun Apparent Trajectory',
+          polyline: {
+            positions: sunArcPositions,
+            width: 2.5,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.25,
+              color: Cesium.Color.fromCssColorString('#f59e0b'),
+            }),
+          },
+        });
       }
 
-      viewer.entities.add({
-        polyline: {
-          positions: sunArcPositions,
-          width: 2.0,
-          material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.2,
-            color: Cesium.Color.fromCssColorString('#f59e0b'),
-          }),
-        },
-      });
-    }
+      if (showEarthOrbit && celestial.earthVecs.length > 1) {
+        const earthArcPositions: Cesium.Cartesian3[] = [];
+        for (const v of celestial.earthVecs) {
+          const len = Math.hypot(v.x, v.y, v.z) || 1;
+          const earthDir = new Cesium.Cartesian3(v.x / len, v.y / len, v.z / len);
+          earthArcPositions.push(
+            Cesium.Cartesian3.multiplyByScalar(earthDir, EARTH_DISTANCE_METERS, new Cesium.Cartesian3())
+          );
+        }
 
-    if (showEarthOrbit && allPointsA.length > 2) {
-      const earthArcPositions: Cesium.Cartesian3[] = [];
-      const orbitRadius = 6000000.0;
-
-      for (const pt of allPointsA) {
-        const azRad = (pt.earth.azimuthDeg * Math.PI) / 180;
-        const elRad = (pt.earth.elevationDeg * Math.PI) / 180;
-        const x = orbitRadius * Math.cos(elRad) * Math.sin(azRad);
-        const y = orbitRadius * Math.cos(elRad) * Math.cos(azRad);
-        const z = orbitRadius * Math.sin(elRad);
-        earthArcPositions.push(new Cesium.Cartesian3(x, y, z));
+        viewer.entities.add({
+          id: 'earth_trajectory_orbit',
+          name: 'Earth Apparent Trajectory',
+          polyline: {
+            positions: earthArcPositions,
+            width: 2.2,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.25,
+              color: Cesium.Color.fromCssColorString('#06b6d4'),
+            }),
+          },
+        });
       }
-
-      viewer.entities.add({
-        polyline: {
-          positions: earthArcPositions,
-          width: 2.2,
-          material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.25,
-            color: Cesium.Color.fromCssColorString('#06b6d4'),
-          }),
-        },
-      });
     }
 
     // 7. Polar Graticule & Grid Overlay (Latitudinal circles & Longitudinal radials)
