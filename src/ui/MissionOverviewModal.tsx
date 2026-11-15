@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   Site,
   ScenarioEvaluation,
@@ -20,8 +20,6 @@ import {
   FileDown,
   Check,
   Award,
-  Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 import {
   Button,
@@ -34,7 +32,7 @@ import {
   InfoTooltip,
 } from '@/components/ui';
 
-interface MissionOverviewModalProps {
+export interface MissionOverviewModalProps {
   siteA: Site;
   siteB?: Site;
   evaluationA: ScenarioEvaluation;
@@ -46,7 +44,106 @@ interface MissionOverviewModalProps {
   onClose: () => void;
 }
 
-export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
+// Memoized Site Candidate Card for instant 60fps selection in the 9-region selector
+interface SiteCandidateCardProps {
+  site: Site;
+  isA: boolean;
+  isB: boolean;
+  onSetA: (site: Site) => void;
+  onSetB?: (site: Site) => void;
+}
+
+const SiteCandidateCard: React.FC<SiteCandidateCardProps> = React.memo(({
+  site,
+  isA,
+  isB,
+  onSetA,
+  onSetB,
+}) => {
+  return (
+    <div
+      className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between gap-1.5 transition-colors ${
+        isA
+          ? 'border-cyan-400 bg-cyan-950/40 text-cyan-200 shadow-sm'
+          : isB
+          ? 'border-amber-400 bg-amber-950/40 text-amber-200 shadow-sm'
+          : 'border-slate-800 bg-space-900/60 text-slate-300 hover:border-slate-700'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-[11px] truncate" title={site.name}>
+          {site.name.split('(')[0].trim()}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          {isA && <Badge variant="cyan" className="text-[8px] py-0 px-1">SITE A</Badge>}
+          {isB && <Badge variant="amber" className="text-[8px] py-0 px-1">SITE B</Badge>}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-800/60">
+        <Button
+          size="xs"
+          variant={isA ? 'cyanPill' : 'outline'}
+          onClick={() => onSetA(site)}
+          className="h-5 text-[9px] px-1.5"
+        >
+          Set A
+        </Button>
+        {onSetB && (
+          <Button
+            size="xs"
+            variant={isB ? 'amberPill' : 'outline'}
+            onClick={() => onSetB(site)}
+            className="h-5 text-[9px] px-1.5"
+          >
+            Set B
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+});
+SiteCandidateCard.displayName = 'SiteCandidateCard';
+
+// Memoized Criteria Slider with RAF-coalesced updates for buttery-smooth slider dragging
+interface CriteriaSliderProps {
+  label: string;
+  weightKey: keyof MissionCriteriaWeights;
+  value: number;
+  colorClass: string;
+  accentClass: string;
+  onChange: (key: keyof MissionCriteriaWeights, val: number) => void;
+}
+
+const CriteriaSlider: React.FC<CriteriaSliderProps> = React.memo(({
+  label,
+  weightKey,
+  value,
+  colorClass,
+  accentClass,
+  onChange,
+}) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between text-slate-300 text-[11px]">
+        <span>{label}</span>
+        <span className={`${colorClass} font-bold`}>{(value * 100).toFixed(0)}%</span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={value}
+        onChange={(e) => onChange(weightKey, parseFloat(e.target.value))}
+        className={`${accentClass} cursor-pointer h-1.5`}
+      />
+    </div>
+  );
+});
+CriteriaSlider.displayName = 'CriteriaSlider';
+
+export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = React.memo(({
   siteA,
   siteB,
   evaluationA,
@@ -63,31 +160,42 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [pdfDownloadedSite, setPdfDownloadedSite] = useState<'A' | 'B' | null>(null);
 
+  const rafWeightRef = useRef<number | null>(null);
+
   const metricsA = evaluationA.metrics;
   const metricsB = evaluationB?.metrics;
   const windowHours = windowDays * 24;
 
-  // Evaluate site scores under active weights
-  const siteScoreA: SiteScoreResult = scoreSite(
-    siteA,
-    metricsA.sunlightPercent,
-    metricsA.earthVisPercent,
-    metricsA.bothUpHours,
-    windowHours,
-    weights
-  );
+  // Memoize site scores under active weights
+  const siteScoreA: SiteScoreResult = useMemo(() => {
+    return scoreSite(
+      siteA,
+      metricsA.sunlightPercent,
+      metricsA.earthVisPercent,
+      metricsA.bothUpHours,
+      windowHours,
+      weights
+    );
+  }, [siteA, metricsA.sunlightPercent, metricsA.earthVisPercent, metricsA.bothUpHours, windowHours, weights]);
 
-  const siteScoreB: SiteScoreResult | null =
-    siteB && metricsB
-      ? scoreSite(
-          siteB,
-          metricsB.sunlightPercent,
-          metricsB.earthVisPercent,
-          metricsB.bothUpHours,
-          windowHours,
-          weights
-        )
-      : null;
+  const siteScoreB: SiteScoreResult | null = useMemo(() => {
+    if (!siteB || !metricsB) return null;
+    return scoreSite(
+      siteB,
+      metricsB.sunlightPercent,
+      metricsB.earthVisPercent,
+      metricsB.bothUpHours,
+      windowHours,
+      weights
+    );
+  }, [siteB, metricsB?.sunlightPercent, metricsB?.earthVisPercent, metricsB?.bothUpHours, windowHours, weights]);
+
+  // Artemis candidates list
+  const artemisSites = useMemo(() => {
+    return LUNAR_SITES.filter(
+      (s) => s.artemisRegionCode && s.artemisRegionCode !== 'OTHER'
+    );
+  }, []);
 
   // HLS Landing Constraints Check
   const isSlopeOptimalA = siteA.slopeDeg <= 5.0;
@@ -100,17 +208,23 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
   const isBufferSafeB = siteB ? siteB.distanceToSteepTerrainM >= 100 : false;
   const isPsrWalkableB = siteB ? siteB.nearestPsrDistanceKm <= 2.0 : false;
 
-  const handleApplyPreset = (key: string) => {
+  const handleApplyPreset = useCallback((key: string) => {
     setSelectedPreset(key);
     setWeights({ ...MISSION_PRESET_PROFILES[key].weights });
-  };
+  }, []);
 
-  const handleWeightChange = (key: keyof MissionCriteriaWeights, val: number) => {
+  // Smooth requestAnimationFrame coalesced weight updates
+  const handleWeightChange = useCallback((key: keyof MissionCriteriaWeights, val: number) => {
     setSelectedPreset('custom');
-    setWeights((prev) => ({ ...prev, [key]: val }));
-  };
+    if (rafWeightRef.current) {
+      cancelAnimationFrame(rafWeightRef.current);
+    }
+    rafWeightRef.current = requestAnimationFrame(() => {
+      setWeights((prev) => ({ ...prev, [key]: val }));
+    });
+  }, []);
 
-  const handleDownloadPdf = async (targetSite: 'A' | 'B') => {
+  const handleDownloadPdf = useCallback(async (targetSite: 'A' | 'B') => {
     setIsPdfGenerating(true);
     try {
       if (targetSite === 'A') {
@@ -137,11 +251,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
     } finally {
       setIsPdfGenerating(false);
     }
-  };
-
-  const artemisSites = LUNAR_SITES.filter(
-    (s) => s.artemisRegionCode && s.artemisRegionCode !== 'OTHER'
-  );
+  }, [siteA, siteB, evaluationA, evaluationB, startDateIso, windowDays, siteScoreA, siteScoreB]);
 
   return (
     <DialogContent
@@ -234,7 +344,10 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
         </div>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 no-scrollbar">
+      <div
+        className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 no-scrollbar overscroll-contain will-change-scroll"
+        style={{ contain: 'content' }}
+      >
         {activeTab === 'overview' ? (
           <>
             {/* ---------------------------------------------------------------- */}
@@ -338,7 +451,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                   </div>
                   <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
                     <div
-                      className="bg-cyan-400 h-full rounded-full transition-all duration-300"
+                      className="bg-cyan-400 h-full rounded-full transition-[width] duration-200 ease-out"
                       style={{ width: `${Math.min(100, Math.max(0, metricsA.sunlightPercent))}%` }}
                     />
                   </div>
@@ -359,7 +472,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                     </div>
                     <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div
-                        className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                        className="bg-amber-400 h-full rounded-full transition-[width] duration-200 ease-out"
                         style={{ width: `${Math.min(100, Math.max(0, metricsB.sunlightPercent))}%` }}
                       />
                     </div>
@@ -393,7 +506,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                   </div>
                   <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
                     <div
-                      className="bg-cyan-400 h-full rounded-full transition-all duration-300"
+                      className="bg-cyan-400 h-full rounded-full transition-[width] duration-200 ease-out"
                       style={{ width: `${Math.min(100, Math.max(0, metricsA.earthVisPercent))}%` }}
                     />
                   </div>
@@ -414,7 +527,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                     </div>
                     <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div
-                        className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                        className="bg-amber-400 h-full rounded-full transition-[width] duration-200 ease-out"
                         style={{ width: `${Math.min(100, Math.max(0, metricsB.earthVisPercent))}%` }}
                       />
                     </div>
@@ -528,56 +641,18 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                 </span>
               </div>
 
-              {/* Horizontal Scrollable Site Cards */}
+              {/* Grid of Site Candidates */}
               <div className="grid grid-cols-3 gap-2 pb-1">
-                {artemisSites.map((s) => {
-                  const isA = s.id === siteA.id;
-                  const isB = siteB && s.id === siteB.id;
-
-                  return (
-                    <div
-                      key={s.id}
-                      className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between gap-1.5 transition-colors ${
-                        isA
-                          ? 'border-cyan-400 bg-cyan-950/40 text-cyan-200 shadow-sm'
-                          : isB
-                          ? 'border-amber-400 bg-amber-950/40 text-amber-200 shadow-sm'
-                          : 'border-slate-800 bg-space-900/60 text-slate-300 hover:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-[11px] truncate" title={s.name}>
-                          {s.name.split('(')[0].trim()}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isA && <Badge variant="cyan" className="text-[8px] py-0 px-1">SITE A</Badge>}
-                          {isB && <Badge variant="amber" className="text-[8px] py-0 px-1">SITE B</Badge>}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-800/60">
-                        <Button
-                          size="xs"
-                          variant={isA ? 'cyanPill' : 'outline'}
-                          onClick={() => onSelectSiteA(s)}
-                          className="h-5 text-[9px] px-1.5"
-                        >
-                          Set A
-                        </Button>
-                        {onSelectSiteB && (
-                          <Button
-                            size="xs"
-                            variant={isB ? 'amberPill' : 'outline'}
-                            onClick={() => onSelectSiteB(s)}
-                            className="h-5 text-[9px] px-1.5"
-                          >
-                            Set B
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {artemisSites.map((s) => (
+                  <SiteCandidateCard
+                    key={s.id}
+                    site={s}
+                    isA={s.id === siteA.id}
+                    isB={Boolean(siteB && s.id === siteB.id)}
+                    onSetA={onSelectSiteA}
+                    onSetB={onSelectSiteB}
+                  />
+                ))}
               </div>
             </div>
           </>
@@ -645,101 +720,54 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>Solar Illumination (w1)</span>
-                    <span className="text-solar-gold font-bold">{(weights.solar * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.solar}
-                    onChange={(e) => handleWeightChange('solar', parseFloat(e.target.value))}
-                    className="accent-amber-400 cursor-pointer h-1.5"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>Earth Visibility (w2)</span>
-                    <span className="text-cyan-400 font-bold">{(weights.earth * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.earth}
-                    onChange={(e) => handleWeightChange('earth', parseFloat(e.target.value))}
-                    className="accent-cyan-400 cursor-pointer h-1.5"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>Both-Up Overlap (w3)</span>
-                    <span className="text-emerald-400 font-bold">{(weights.jointBothUp * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.jointBothUp}
-                    onChange={(e) => handleWeightChange('jointBothUp', parseFloat(e.target.value))}
-                    className="accent-emerald-400 cursor-pointer h-1.5"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>Landing Slope Safety (w4)</span>
-                    <span className="text-purple-400 font-bold">{(weights.landingSlope * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.landingSlope}
-                    onChange={(e) => handleWeightChange('landingSlope', parseFloat(e.target.value))}
-                    className="accent-purple-400 cursor-pointer h-1.5"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>LOLA Confidence (w5)</span>
-                    <span className="text-slate-300 font-bold">{(weights.terrainConfidence * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.terrainConfidence}
-                    onChange={(e) => handleWeightChange('terrainConfidence', parseFloat(e.target.value))}
-                    className="accent-slate-400 cursor-pointer h-1.5"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex justify-between text-slate-300 text-[11px]">
-                    <span>PSR Accessibility (w6)</span>
-                    <span className="text-blue-400 font-bold">{(weights.psrAccessibility * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={weights.psrAccessibility}
-                    onChange={(e) => handleWeightChange('psrAccessibility', parseFloat(e.target.value))}
-                    className="accent-blue-400 cursor-pointer h-1.5"
-                  />
-                </div>
+                <CriteriaSlider
+                  label="Solar Illumination (w1)"
+                  weightKey="solar"
+                  value={weights.solar}
+                  colorClass="text-solar-gold"
+                  accentClass="accent-amber-400"
+                  onChange={handleWeightChange}
+                />
+                <CriteriaSlider
+                  label="Earth Visibility (w2)"
+                  weightKey="earth"
+                  value={weights.earth}
+                  colorClass="text-cyan-400"
+                  accentClass="accent-cyan-400"
+                  onChange={handleWeightChange}
+                />
+                <CriteriaSlider
+                  label="Both-Up Overlap (w3)"
+                  weightKey="jointBothUp"
+                  value={weights.jointBothUp}
+                  colorClass="text-emerald-400"
+                  accentClass="accent-emerald-400"
+                  onChange={handleWeightChange}
+                />
+                <CriteriaSlider
+                  label="Landing Slope Safety (w4)"
+                  weightKey="landingSlope"
+                  value={weights.landingSlope}
+                  colorClass="text-purple-400"
+                  accentClass="accent-purple-400"
+                  onChange={handleWeightChange}
+                />
+                <CriteriaSlider
+                  label="LOLA Confidence (w5)"
+                  weightKey="terrainConfidence"
+                  value={weights.terrainConfidence}
+                  colorClass="text-slate-300"
+                  accentClass="accent-slate-400"
+                  onChange={handleWeightChange}
+                />
+                <CriteriaSlider
+                  label="PSR Accessibility (w6)"
+                  weightKey="psrAccessibility"
+                  value={weights.psrAccessibility}
+                  colorClass="text-blue-400"
+                  accentClass="accent-blue-400"
+                  onChange={handleWeightChange}
+                />
               </div>
             </Card>
 
@@ -820,4 +848,6 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
       </div>
     </DialogContent>
   );
-};
+});
+
+MissionOverviewModal.displayName = 'MissionOverviewModal';

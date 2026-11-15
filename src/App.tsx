@@ -1,5 +1,5 @@
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle, ResizableHandle, ResizablePanel, ResizablePanelGroup, usePanelRef } from '@/components/ui';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { PRECOMPUTED_HORIZONS, generateCustomHorizon } from './data/horizons';
 import { LUNAR_SITES } from './data/sites';
 import { AlternativeCandidate, findAlternativeScenarios } from './engine/alternatives';
@@ -175,6 +175,7 @@ export const App: React.FC = () => {
       setRoiPolygon([]);
       setOptimalRoiResult(null);
     } else if (toolId === 'hls-overview') {
+      setIsPlaying(false);
       setShowMissionOverviewModal(true);
     } else if (toolId === 'my-badge') {
       setSelectedBadgeSite(siteA);
@@ -562,6 +563,18 @@ export const App: React.FC = () => {
     setIsDrawingRoi(true);
   };
 
+  const handleSelectModalSiteA = useCallback((newSite: Site) => {
+    setSiteA(newSite);
+  }, []);
+
+  const handleSelectModalSiteB = useCallback((newSite: Site) => {
+    setSiteB(newSite);
+  }, []);
+
+  const handleCloseMissionOverviewModal = useCallback(() => {
+    setShowMissionOverviewModal(false);
+  }, []);
+
   // Keyboard shortcut: Escape cancels 3D pick mode or ROI drawing mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -584,7 +597,10 @@ export const App: React.FC = () => {
         uiMode={uiMode}
         onSetUIMode={setUIMode}
         onOpenLearnTour={() => setShowLearnTourModal(true)}
-        onOpenMissionOverview={() => setShowMissionOverviewModal(true)}
+        onOpenMissionOverview={() => {
+          setIsPlaying(false);
+          setShowMissionOverviewModal(true);
+        }}
         onShareUrl={handleShareUrl}
       />
 
@@ -908,13 +924,9 @@ export const App: React.FC = () => {
           evaluationB={evaluationB}
           startDateIso={startDateIso}
           windowDays={windowDays}
-          onSelectSiteA={(newSite) => {
-            setSiteA(newSite);
-          }}
-          onSelectSiteB={(newSite) => {
-            setSiteB(newSite);
-          }}
-          onClose={() => setShowMissionOverviewModal(false)}
+          onSelectSiteA={handleSelectModalSiteA}
+          onSelectSiteB={handleSelectModalSiteB}
+          onClose={handleCloseMissionOverviewModal}
         />
       )}
 

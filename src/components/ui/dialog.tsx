@@ -65,10 +65,11 @@ DialogTrigger.displayName = "DialogTrigger";
 
 interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
   onClose?: () => void;
+  overlayClassName?: string;
 }
 
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, onClose, ...props }, ref) => {
+  ({ className, children, onClose, overlayClassName, ...props }, ref) => {
     const context = React.useContext(DialogContext);
     const isOpen = context ? context.open : true;
 
@@ -93,11 +94,16 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
     };
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+      <div
+        className={cn(
+          "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 animate-fade-in",
+          overlayClassName
+        )}
+      >
         <div
           ref={ref}
           className={cn(
-            "relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-space-900 shadow-2xl p-6 flex flex-col gap-4 text-slate-100 max-h-[90vh] overflow-y-auto",
+            "relative w-full max-w-2xl rounded-2xl border border-slate-700 bg-space-900 shadow-2xl p-6 flex flex-col gap-4 text-slate-100 max-h-[90vh] overflow-y-auto will-change-transform",
             className
           )}
           {...props}
