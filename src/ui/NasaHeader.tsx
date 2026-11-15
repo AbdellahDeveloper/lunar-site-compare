@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   UIMode,
 } from '../types';
 import {
-  Share2,
-  Check,
   Sliders,
   BookOpen,
   Eye,
 } from 'lucide-react';
-import { Button, Badge, InfoTooltip } from '@/components/ui';
+import { Button, InfoTooltip } from '@/components/ui';
 
 interface NasaHeaderProps {
   uiMode: UIMode;
@@ -20,23 +18,14 @@ interface NasaHeaderProps {
   onSetWindowDays?: (days: number) => void;
   onOpenLearnTour: () => void;
   onOpenMissionOverview?: () => void;
-  onShareUrl: () => void;
+  onShareUrl?: () => void;
 }
 
 export const NasaHeader: React.FC<NasaHeaderProps> = React.memo(({
   uiMode,
   onSetUIMode,
   onOpenLearnTour,
-  onShareUrl,
 }) => {
-  const [copiedShare, setCopiedShare] = useState(false);
-
-  const handleShare = () => {
-    onShareUrl();
-    setCopiedShare(true);
-    setTimeout(() => setCopiedShare(false), 2500);
-  };
-
   return (
     <header className="z-30 w-full bg-space-950/98 border-b border-slate-700/80 px-4 py-2 shadow-2xl">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
@@ -52,9 +41,6 @@ export const NasaHeader: React.FC<NasaHeaderProps> = React.memo(({
             <span className="font-extrabold tracking-tight text-sm text-slate-100 font-mono uppercase">
               SELENE<span className="text-cyan-400">-COMPARE</span>
             </span>
-            <Badge variant="viable" className="text-[9px]">
-              ARTEMIS III
-            </Badge>
             <InfoTooltip text="Lunar South Pole 3D Solar Illumination, Direct-to-Earth Communication, and Landing Site Feasibility Operations." />
           </div>
         </div>
@@ -96,21 +82,6 @@ export const NasaHeader: React.FC<NasaHeaderProps> = React.memo(({
           >
             <BookOpen className="w-3 h-3 text-cyan-400" />
             <span>Guide</span>
-          </Button>
-
-          {/* Share Button */}
-          <Button
-            variant="outline"
-            size="icon-sm"
-            onClick={handleShare}
-            title="Share Configuration"
-            className="h-7 w-7"
-          >
-            {copiedShare ? (
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <Share2 className="w-3.5 h-3.5 text-cyan-400" />
-            )}
           </Button>
         </div>
       </div>
