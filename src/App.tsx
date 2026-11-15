@@ -177,9 +177,6 @@ export const App: React.FC = () => {
       setOptimalRoiResult(null);
     } else if (toolId === 'hls-overview') {
       setShowMissionOverviewModal(true);
-    } else if (toolId === 'head-to-head') {
-      rightPanelRef.current?.expand();
-      setIsRightCollapsed(false);
     } else if (toolId === 'my-badge') {
       setSelectedBadgeSite(siteA);
       setShowBadgeModal(true);

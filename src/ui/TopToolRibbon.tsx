@@ -14,7 +14,6 @@ import {
   ShieldAlert,
   Sparkles,
   Sun,
-  Trophy,
 } from 'lucide-react';
 import React, { useRef } from 'react';
 import { UIMode } from '../types';
@@ -47,15 +46,6 @@ export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
     targetDescription: 'Select Artemis candidate locations for Site A and Site B',
     category: 'Mission Planning',
     badgeText: 'Sites A/B',
-  },
-  {
-    id: 'head-to-head',
-    label: 'Base Face-Off',
-    icon: Trophy,
-    targetPanel: 'right',
-    targetDescription: 'Head-to-head battle comparing solar power, radio link, water ice, and overall winner',
-    category: 'Telemetry & Analysis',
-    badgeText: 'Versus',
   },
   {
     id: 'my-badge',
