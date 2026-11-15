@@ -35,7 +35,7 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     label: 'Layer Management',
     icon: Layers,
     targetPanel: 'left',
-    targetDescription: 'Basemaps, LROC WAC mosaic, LOLA topography, Diviner rockiness & volatile cold traps',
+    targetDescription: 'Geometric guides, polar graticule rings, 3D sightlines, and celestial ephemeris trails',
     category: 'GIS & Mapping',
     badgeText: 'Layers',
   },

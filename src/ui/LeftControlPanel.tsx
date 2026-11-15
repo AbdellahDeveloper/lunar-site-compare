@@ -11,7 +11,6 @@ import {
   Globe,
   Navigation,
   Crosshair,
-  Check,
 } from 'lucide-react';
 import {
   Button,
@@ -129,9 +128,6 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
   const [activeSiteTab, setActiveSiteTab] = useState<'A' | 'B'>('A');
   const [placemarkFilter, setPlacemarkFilter] = useState('');
 
-  // Local visual overlay states
-  const [activeBasemap, setActiveBasemap] = useState<'lroc' | 'lola'>('lroc');
-
   const activeSite = activeSiteTab === 'A' ? siteA : siteB;
   const isCurrentActiveLit = activeSiteTab === 'A' ? isSiteALit : isSiteBLit;
 
@@ -198,7 +194,7 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
               <InfoTooltip
                 text={
                   isLayerMode
-                    ? 'Manage LROC WAC/NAC global mosaic and scientific surface hazard overlays.'
+                    ? 'Toggle geometric guides, polar graticule rings, 3D sightlines, and celestial ephemeris trails.'
                     : isCoordsMode
                     ? 'Selenocentric coordinates, inter-site distance, azimuth heading, and sub-celestial points.'
                     : isPlacemarksMode
@@ -399,36 +395,8 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
           {/* ============================================================== */}
           {isLayerMode && (
             <div className="flex flex-col gap-3 animate-fade-in font-mono">
-              {/* Basemap Selection */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] text-slate-400 uppercase flex items-center gap-1">
-                  BASEMAP
-                  <InfoTooltip text="Select global mosaic surface layer streamed from NASA planetary servers." />
-                </span>
-                <div className="grid grid-cols-2 gap-1">
-                  <Button
-                    variant={activeBasemap === 'lroc' ? 'nasa' : 'outline'}
-                    size="xs"
-                    onClick={() => setActiveBasemap('lroc')}
-                    className="h-7 text-[10px] justify-between"
-                  >
-                    <span>LROC WAC</span>
-                    {activeBasemap === 'lroc' && <Check className="w-3 h-3 text-cyan-400" />}
-                  </Button>
-                  <Button
-                    variant={activeBasemap === 'lola' ? 'nasa' : 'outline'}
-                    size="xs"
-                    onClick={() => setActiveBasemap('lola')}
-                    className="h-7 text-[10px] justify-between"
-                  >
-                    <span>LOLA DEM</span>
-                    {activeBasemap === 'lola' && <Check className="w-3 h-3 text-cyan-400" />}
-                  </Button>
-                </div>
-              </div>
-
               {/* Geometric Guides */}
-              <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800">
+              <div className="flex flex-col gap-1.5">
                 <span className="text-[10px] text-slate-400 uppercase pt-1">GEOMETRIC GUIDES</span>
 
                 <Card className="p-2 bg-space-900/60 border-slate-800 flex items-center justify-between">
