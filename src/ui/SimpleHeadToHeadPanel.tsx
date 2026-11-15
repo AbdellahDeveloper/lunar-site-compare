@@ -7,8 +7,6 @@ import {
   Trophy,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
-  MapPin,
   Camera,
 } from 'lucide-react';
 import { Button, Card, Badge } from '@/components/ui';
@@ -24,7 +22,6 @@ export interface SimpleHeadToHeadPanelProps {
   onFlyToSiteA: () => void;
   onFlyToSiteB: () => void;
   onClaimBadge?: (site: Site) => void;
-  onChangeSites?: () => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
@@ -39,7 +36,6 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
   onFlyToSiteA,
   onFlyToSiteB,
   onClaimBadge,
-  onChangeSites,
   isCollapsed,
   onToggleCollapse,
 }) => {
@@ -170,19 +166,6 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
               </div>
             </div>
           </div>
-
-          {onChangeSites && (
-            <Button
-              variant="ghost"
-              size="xs"
-              onClick={onChangeSites}
-              className="w-full text-[10px] h-6 text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60 font-mono flex items-center justify-center gap-1 border border-slate-800/80 rounded-lg"
-            >
-              <MapPin className="w-3 h-3 text-cyan-400" />
-              <span>Change Locations in Left Panel</span>
-              <ArrowRight className="w-2.5 h-2.5 ml-0.5 opacity-60" />
-            </Button>
-          )}
 
           {/* 4 Head-to-Head Comparison Battle Cards */}
           <div className="flex flex-col gap-2.5">

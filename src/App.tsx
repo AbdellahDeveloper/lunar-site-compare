@@ -749,11 +749,6 @@ export const App: React.FC = () => {
                     currentPointB={currentPointB}
                     onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
                     onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
-                    onChangeSites={() => {
-                      setActiveTool('landing-sites');
-                      leftPanelRef.current?.expand();
-                      setIsLeftCollapsed(false);
-                    }}
                     isCollapsed={isRightCollapsed}
                     onToggleCollapse={toggleRightCollapse}
                   />
