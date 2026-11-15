@@ -1,22 +1,21 @@
-import React, { useRef } from 'react';
+import { Button, Card, Tooltip } from '@/components/ui';
 import {
-  Layers,
-  Compass,
-  Rocket,
-  Camera,
-  Search,
-  MapPin,
-  Sun,
-  Radio,
-  Globe,
-  ShieldAlert,
   Award,
+  Camera,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
+  Compass,
   Crosshair,
+  Globe,
+  Layers,
+  MapPin,
+  Radio,
+  Rocket,
+  ShieldAlert,
+  Sparkles,
+  Sun
 } from 'lucide-react';
-import { Button, Card, Badge, Tooltip } from '@/components/ui';
+import React, { useRef } from 'react';
 
 export interface RibbonTool {
   id: string;
@@ -238,18 +237,16 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
             >
               <Card
                 onClick={() => onSelectTool(tool.id)}
-                className={`flex flex-col items-center justify-between p-2 min-w-[104px] h-[66px] rounded-lg cursor-pointer transition-all duration-200 border text-center group ${
-                  isActive
+                className={`flex flex-col items-center justify-between p-2 min-w-[104px] h-[66px] rounded-lg cursor-pointer transition-all duration-200 border text-center group ${isActive
                     ? 'bg-cyan-950/40 border-cyan-500/80 ring-1 ring-cyan-500/50 shadow-md shadow-cyan-950/40 text-cyan-200'
                     : 'bg-space-900/70 border-slate-800/90 text-slate-300 hover:bg-space-850 hover:border-slate-700 hover:text-slate-100'
-                }`}
+                  }`}
               >
                 {/* Tool Icon */}
                 <div className="relative flex items-center justify-center">
                   <Icon
-                    className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110 ${
-                      isActive ? 'text-cyan-400 stroke-[2.2]' : 'text-slate-400 group-hover:text-cyan-300'
-                    }`}
+                    className={`w-5 h-5 transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-cyan-400 stroke-[2.2]' : 'text-slate-400 group-hover:text-cyan-300'
+                      }`}
                   />
                   {isActive && (
                     <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-space-950 animate-pulse" />
@@ -259,9 +256,8 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
                 {/* Tool Title */}
                 <div className="flex flex-col items-center">
                   <span
-                    className={`text-[10.5px] font-medium leading-tight line-clamp-1 truncate max-w-[94px] ${
-                      isActive ? 'font-bold text-cyan-200' : 'text-slate-300 group-hover:text-slate-100'
-                    }`}
+                    className={`text-[10.5px] font-medium leading-tight line-clamp-1 truncate max-w-[94px] ${isActive ? 'font-bold text-cyan-200' : 'text-slate-300 group-hover:text-slate-100'
+                      }`}
                   >
                     {tool.label}
                   </span>
@@ -269,11 +265,10 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
                   {/* Micro Target Indicator Pill */}
                   <div className="flex items-center gap-1 mt-0.5">
                     <span
-                      className={`text-[8.5px] uppercase font-mono tracking-tight px-1 rounded-sm border ${
-                        isActive
+                      className={`text-[8.5px] uppercase font-mono tracking-tight px-1 rounded-sm border ${isActive
                           ? 'border-cyan-400/50 text-cyan-300 bg-cyan-900/60'
                           : 'border-slate-800 text-slate-500 bg-space-950/60 group-hover:text-slate-400'
-                      }`}
+                        }`}
                     >
                       {tool.badgeText || getTargetLabel(tool.targetPanel).split(' ')[0]}
                     </span>

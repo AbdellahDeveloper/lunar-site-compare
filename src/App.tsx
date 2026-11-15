@@ -1,39 +1,37 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { DialogContent, DialogDescription, DialogHeader, DialogTitle, ResizableHandle, ResizablePanel, ResizablePanelGroup, usePanelRef } from '@/components/ui';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PRECOMPUTED_HORIZONS, generateCustomHorizon } from './data/horizons';
+import { LUNAR_SITES } from './data/sites';
+import { AlternativeCandidate, findAlternativeScenarios } from './engine/alternatives';
+import { createLocalFrame } from './engine/local';
+import { runMonteCarloAssessment } from './engine/monteCarlo';
+import { bodyVectors } from './engine/moon';
+import { OptimalRoiResult, RoiPoint, findOptimalSiteInPolygon } from './engine/roiOptimizer';
+import { evaluateScenario } from './engine/series';
+import { computeSlipAnalysis } from './engine/slip';
+import { evaluateVisibilityAtInstant } from './engine/visibility';
 import {
   EphemerisPoint,
   HorizonMask,
   ScenarioConfig,
-  ScenarioEvaluation,
   Site,
-  SlipCase,
-  UIMode,
+  UIMode
 } from './types';
-import { LUNAR_SITES } from './data/sites';
-import { PRECOMPUTED_HORIZONS, generateCustomHorizon } from './data/horizons';
-import { evaluateScenario } from './engine/series';
-import { evaluateVisibilityAtInstant } from './engine/visibility';
-import { bodyVectors } from './engine/moon';
-import { createLocalFrame } from './engine/local';
-import { computeSlipAnalysis } from './engine/slip';
-import { findAlternativeScenarios, AlternativeCandidate } from './engine/alternatives';
-import { runMonteCarloAssessment } from './engine/monteCarlo';
-import { NasaHeader } from './ui/NasaHeader';
-import { TopToolRibbon } from './ui/TopToolRibbon';
-import { CesiumLunarViewport, CesiumViewportHandle } from './ui/CesiumLunarViewport';
-import { LeftControlPanel } from './ui/LeftControlPanel';
-import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
-import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
-import { SlipTable } from './ui/SlipTable';
 import { AlternativesModal } from './ui/AlternativesModal';
-import { MapPicker2D } from './ui/MapPicker2D';
-import { LearnTourModal } from './ui/LearnTourModal';
-import { ExportModal } from './ui/ExportModal';
-import { MissionOverviewModal } from './ui/MissionOverviewModal';
+import { CesiumLunarViewport, CesiumViewportHandle } from './ui/CesiumLunarViewport';
 import { DesignateSiteModal } from './ui/DesignateSiteModal';
+import { ExportModal } from './ui/ExportModal';
+import { LearnTourModal } from './ui/LearnTourModal';
+import { LeftControlPanel } from './ui/LeftControlPanel';
+import { MapPicker2D } from './ui/MapPicker2D';
+import { MissionOverviewModal } from './ui/MissionOverviewModal';
+import { NasaHeader } from './ui/NasaHeader';
+import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
+import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
 import { RoiDrawingHud } from './ui/RoiDrawingHud';
 import { RoiSearchModal } from './ui/RoiSearchModal';
-import { RoiPoint, OptimalRoiResult, findOptimalSiteInPolygon } from './engine/roiOptimizer';
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription, ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from '@/components/ui';
+import { SlipTable } from './ui/SlipTable';
+import { TopToolRibbon } from './ui/TopToolRibbon';
 
 export const App: React.FC = () => {
   // UI Mode: starts in Simple View with 3D-first central focus
@@ -679,11 +677,11 @@ export const App: React.FC = () => {
                   optimalCandidate={
                     optimalRoiResult
                       ? {
-                          lat: optimalRoiResult.bestSite.lat,
-                          lon: optimalRoiResult.bestSite.lon,
-                          score: optimalRoiResult.score,
-                          name: optimalRoiResult.bestSite.name,
-                        }
+                        lat: optimalRoiResult.bestSite.lat,
+                        lon: optimalRoiResult.bestSite.lon,
+                        score: optimalRoiResult.score,
+                        name: optimalRoiResult.bestSite.name,
+                      }
                       : null
                   }
                 />

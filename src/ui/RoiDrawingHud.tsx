@@ -1,6 +1,6 @@
+import { Badge, Button } from '@/components/ui';
+import { RotateCcw, Sparkles, X } from 'lucide-react';
 import React from 'react';
-import { Sparkles, X, RotateCcw, Crosshair, CheckCircle2 } from 'lucide-react';
-import { Button, Badge } from '@/components/ui';
 
 interface RoiDrawingHudProps {
   pointsCount: number;
@@ -48,11 +48,10 @@ export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
             size="xs"
             onClick={onOptimize}
             disabled={!canOptimize || isOptimizing}
-            className={`font-semibold text-xs h-7 px-2.5 transition-all ${
-              canOptimize
+            className={`font-semibold text-xs h-7 px-2.5 transition-all ${canOptimize
                 ? 'bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white shadow-md shadow-cyan-900/30'
                 : 'bg-slate-800/80 text-slate-500 border border-slate-700/50'
-            }`}
+              }`}
           >
             {isOptimizing ? (
               <>

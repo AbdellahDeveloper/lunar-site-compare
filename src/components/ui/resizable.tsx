@@ -1,7 +1,7 @@
-import * as React from "react";
-import { GripVertical, GripHorizontal } from "lucide-react";
-import * as ResizablePrimitive from "react-resizable-panels";
 import { cn } from "@/lib/utils";
+import { GripHorizontal, GripVertical } from "lucide-react";
+import * as React from "react";
+import * as ResizablePrimitive from "react-resizable-panels";
 
 interface ResizablePanelGroupProps
   extends Omit<React.ComponentProps<typeof ResizablePrimitive.Group>, "orientation"> {
@@ -73,10 +73,9 @@ const ResizableHandle = ({
   );
 };
 
-export {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-};
 export { usePanelRef } from "react-resizable-panels";
 export type { PanelImperativeHandle } from "react-resizable-panels";
+export {
+  ResizableHandle, ResizablePanel, ResizablePanelGroup
+};
+
