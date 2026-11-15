@@ -30,6 +30,9 @@ import { LearnTourModal } from './ui/LearnTourModal';
 import { ExportModal } from './ui/ExportModal';
 import { MissionOverviewModal } from './ui/MissionOverviewModal';
 import { DesignateSiteModal } from './ui/DesignateSiteModal';
+import { RoiDrawingHud } from './ui/RoiDrawingHud';
+import { RoiSearchModal } from './ui/RoiSearchModal';
+import { RoiPoint, OptimalRoiResult, findOptimalSiteInPolygon } from './engine/roiOptimizer';
 import { DialogContent, DialogHeader, DialogTitle, DialogDescription, ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from '@/components/ui';
 
 export const App: React.FC = () => {
@@ -108,6 +111,13 @@ export const App: React.FC = () => {
   const [pendingPickCoords, setPendingPickCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [showDesignateSiteModal, setShowDesignateSiteModal] = useState(false);
 
+  // ROI Site Search & Optimization Tool Mode
+  const [isDrawingRoi, setIsDrawingRoi] = useState(false);
+  const [roiPolygon, setRoiPolygon] = useState<RoiPoint[]>([]);
+  const [isOptimizingRoi, setIsOptimizingRoi] = useState(false);
+  const [optimalRoiResult, setOptimalRoiResult] = useState<OptimalRoiResult | null>(null);
+  const [showRoiResultModal, setShowRoiResultModal] = useState(false);
+
   // Sidebar Collapse Toggles via Resizable Panel API
   const toggleLeftCollapse = () => {
     const panel = leftPanelRef.current;
@@ -161,6 +171,12 @@ export const App: React.FC = () => {
       }
     } else if (toolId === 'search-lunar') {
       setIsPicking3DLocation(true);
+      setIsDrawingRoi(false);
+    } else if (toolId === 'roi-optimizer') {
+      setIsDrawingRoi(true);
+      setIsPicking3DLocation(false);
+      setRoiPolygon([]);
+      setOptimalRoiResult(null);
     } else if (toolId === 'hls-overview') {
       setShowMissionOverviewModal(true);
     }
@@ -460,16 +476,82 @@ export const App: React.FC = () => {
     setIsPicking3DLocation(false);
   };
 
-  // Keyboard shortcut: Escape cancels 3D pick mode
+  // ROI Optimization Handlers
+  const handleAddRoiPoint = (pt: RoiPoint) => {
+    setRoiPolygon((prev) => [...prev, pt]);
+  };
+
+  const handleRunRoiOptimization = () => {
+    if (roiPolygon.length < 3) return;
+    setIsOptimizingRoi(true);
+
+    setTimeout(() => {
+      try {
+        const result = findOptimalSiteInPolygon(
+          roiPolygon,
+          windowStartMs,
+          windowEndMs,
+          LUNAR_SITES
+        );
+        setOptimalRoiResult(result);
+        setShowRoiResultModal(true);
+        setIsDrawingRoi(false);
+
+        // Center camera view on the newly discovered optimal target
+        cesiumViewportRef.current?.flyToCoordinates(result.bestSite.lat, result.bestSite.lon, 420);
+      } catch (err) {
+        console.error('ROI optimization error:', err);
+      } finally {
+        setIsOptimizingRoi(false);
+      }
+    }, 50);
+  };
+
+  const handleClearRoi = () => {
+    setRoiPolygon([]);
+    setOptimalRoiResult(null);
+  };
+
+  const handleCancelRoi = () => {
+    setIsDrawingRoi(false);
+    setRoiPolygon([]);
+    setOptimalRoiResult(null);
+    setShowRoiResultModal(false);
+  };
+
+  const handleApplyRoiSiteToA = (site: Site) => {
+    setSiteA(site);
+    setShowRoiResultModal(false);
+    cesiumViewportRef.current?.flyToCoordinates(site.lat, site.lon, 450);
+  };
+
+  const handleApplyRoiSiteToB = (site: Site) => {
+    setSiteB(site);
+    setShowRoiResultModal(false);
+    cesiumViewportRef.current?.flyToCoordinates(site.lat, site.lon, 450);
+  };
+
+  const handleRedrawRoi = () => {
+    setShowRoiResultModal(false);
+    setOptimalRoiResult(null);
+    setRoiPolygon([]);
+    setIsDrawingRoi(true);
+  };
+
+  // Keyboard shortcut: Escape cancels 3D pick mode or ROI drawing mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isPicking3DLocation) {
-        handleCancelPick();
+      if (e.key === 'Escape') {
+        if (isDrawingRoi) {
+          handleCancelRoi();
+        } else if (isPicking3DLocation) {
+          handleCancelPick();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPicking3DLocation]);
+  }, [isPicking3DLocation, isDrawingRoi]);
 
   return (
     <div className="w-screen h-screen overflow-hidden bg-space-950 text-slate-100 flex flex-col select-none">
@@ -556,6 +638,17 @@ export const App: React.FC = () => {
 
               {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
               <ResizablePanel id="center-viewport" minSize={360} className="relative h-full">
+                {/* Floating HUD for Active ROI Drawing Mode */}
+                {isDrawingRoi && (
+                  <RoiDrawingHud
+                    pointsCount={roiPolygon.length}
+                    isOptimizing={isOptimizingRoi}
+                    onOptimize={handleRunRoiOptimization}
+                    onClear={handleClearRoi}
+                    onCancel={handleCancelRoi}
+                  />
+                )}
+
                 <CesiumLunarViewport
                   ref={cesiumViewportRef}
                   siteA={siteA}
@@ -584,6 +677,19 @@ export const App: React.FC = () => {
                   onStartPickLocation={() => setIsPicking3DLocation(true)}
                   onCancelPickLocation={handleCancelPick}
                   pendingPickCoords={pendingPickCoords}
+                  isDrawingRoi={isDrawingRoi}
+                  roiPolygon={roiPolygon}
+                  onAddRoiPoint={handleAddRoiPoint}
+                  optimalCandidate={
+                    optimalRoiResult
+                      ? {
+                          lat: optimalRoiResult.bestSite.lat,
+                          lon: optimalRoiResult.bestSite.lon,
+                          score: optimalRoiResult.score,
+                          name: optimalRoiResult.bestSite.name,
+                        }
+                      : null
+                  }
                 />
               </ResizablePanel>
 
@@ -764,6 +870,17 @@ export const App: React.FC = () => {
             setSiteA(newSite);
           }}
           onClose={() => setShowMissionOverviewModal(false)}
+        />
+      )}
+
+      {/* Discovered Optimal ROI Site Result Modal */}
+      {showRoiResultModal && optimalRoiResult && (
+        <RoiSearchModal
+          result={optimalRoiResult}
+          onSetLocationA={handleApplyRoiSiteToA}
+          onSetLocationB={handleApplyRoiSiteToB}
+          onRedraw={handleRedrawRoi}
+          onClose={() => setShowRoiResultModal(false)}
         />
       )}
     </div>

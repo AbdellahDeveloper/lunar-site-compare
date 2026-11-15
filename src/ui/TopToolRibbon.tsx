@@ -94,6 +94,15 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     badgeText: '3D Picker',
   },
   {
+    id: 'roi-optimizer',
+    label: 'ROI Site Search',
+    icon: Sparkles,
+    targetPanel: 'viewport',
+    targetDescription: 'Draw a closed exploration boundary on the Moon to automatically search and find the optimal landing site for sunlight, Earth comms, and solar power',
+    category: 'Mission Planning',
+    badgeText: 'Optimizer',
+  },
+  {
     id: 'placemarks',
     label: 'Placemarks',
     icon: MapPin,

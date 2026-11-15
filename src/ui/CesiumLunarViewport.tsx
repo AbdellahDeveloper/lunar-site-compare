@@ -201,6 +201,10 @@ export interface CesiumLunarViewportProps {
   onStartPickLocation?: () => void;
   onCancelPickLocation?: () => void;
   pendingPickCoords?: { lat: number; lon: number } | null;
+  isDrawingRoi?: boolean;
+  roiPolygon?: { lat: number; lon: number }[];
+  onAddRoiPoint?: (point: { lat: number; lon: number }) => void;
+  optimalCandidate?: { lat: number; lon: number; score: number; name: string } | null;
   autoSpin: boolean;
   spinSpeedIndex: number;
   showGraticule?: boolean;
@@ -230,6 +234,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   onStartPickLocation,
   onCancelPickLocation,
   pendingPickCoords,
+  isDrawingRoi = false,
+  roiPolygon = [],
+  onAddRoiPoint,
+  optimalCandidate = null,
   autoSpin,
   spinSpeedIndex,
   showGraticule = true,
@@ -238,17 +246,25 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerARef = useRef<Cesium.Viewer | null>(null);
 
-  // 3D Location Picker reactive refs
+  // 3D Location Picker & ROI reactive refs
   const isPickingLocationRef = useRef<boolean>(isPickingLocation);
   isPickingLocationRef.current = isPickingLocation;
   const onPickSurfaceCoordsRef = useRef(onPickSurfaceCoords);
   onPickSurfaceCoordsRef.current = onPickSurfaceCoords;
 
+  const isDrawingRoiRef = useRef<boolean>(isDrawingRoi);
+  isDrawingRoiRef.current = isDrawingRoi;
+  const onAddRoiPointRef = useRef(onAddRoiPoint);
+  onAddRoiPointRef.current = onAddRoiPoint;
+
   useEffect(() => {
     isPickingLocationRef.current = isPickingLocation;
+    isDrawingRoiRef.current = isDrawingRoi;
     const canvasA = viewerARef.current?.canvas;
-    if (canvasA) canvasA.style.cursor = isPickingLocation ? 'crosshair' : '';
-  }, [isPickingLocation]);
+    if (canvasA) {
+      canvasA.style.cursor = isDrawingRoi || isPickingLocation ? 'crosshair' : '';
+    }
+  }, [isPickingLocation, isDrawingRoi]);
 
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
@@ -517,10 +533,28 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           canvas.releasePointerCapture(e.pointerId);
         } catch {}
 
-        canvas.style.cursor = isPickingLocationRef.current ? 'crosshair' : e.shiftKey ? 'grab' : '';
+        canvas.style.cursor = (isDrawingRoiRef.current || isPickingLocationRef.current) ? 'crosshair' : e.shiftKey ? 'grab' : '';
 
         const clickDist = Math.hypot(e.clientX - pointerStartX, e.clientY - pointerStartY);
         const clickDuration = performance.now() - pointerStartTime;
+
+        // If in ROI Drawing Mode and user clicked cleanly on the 3D Moon:
+        if (isDrawingRoiRef.current && clickDist < 8 && clickDuration < 600 && e.button === 0) {
+          const rect = canvas.getBoundingClientRect();
+          const mousePos = new Cesium.Cartesian2(e.clientX - rect.left, e.clientY - rect.top);
+          const ray = viewer.camera.getPickRay(mousePos);
+          if (ray) {
+            const intersection = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.MOON);
+            if (intersection && intersection.start > 0) {
+              const targetPoint = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
+              const carto = Cesium.Cartographic.fromCartesian(targetPoint, Cesium.Ellipsoid.MOON);
+              const lon = Cesium.Math.toDegrees(carto.longitude);
+              const lat = Cesium.Math.toDegrees(carto.latitude);
+              onAddRoiPointRef.current?.({ lat, lon });
+              return;
+            }
+          }
+        }
 
         // If in 3D Location Pick Mode and user clicked cleanly on the 3D Moon:
         if (isPickingLocationRef.current && clickDist < 8 && clickDuration < 600 && e.button === 0) {
@@ -896,6 +930,111 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.9)'),
           backgroundPadding: new Cesium.Cartesian2(12, 6),
+          showBackground: true,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    }
+
+    // 0b. ROI Search User-Drawn Polygon & Vertices
+    if (roiPolygon && roiPolygon.length > 0) {
+      const positions = roiPolygon.map((p) =>
+        Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 35.0, moon)
+      );
+
+      // Render polyline boundary connecting points
+      if (positions.length >= 2) {
+        const loopPositions = positions.length >= 3 ? [...positions, positions[0]] : positions;
+        viewer.entities.add({
+          id: 'roi_boundary_polyline',
+          name: 'ROI Boundary Line',
+          polyline: {
+            positions: loopPositions,
+            width: 3.5,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.25,
+              color: Cesium.Color.fromCssColorString('#22d3ee'),
+            }),
+            clampToGround: false,
+          },
+        });
+      }
+
+      // If at least 3 points, render translucent fill
+      if (positions.length >= 3) {
+        viewer.entities.add({
+          id: 'roi_area_polygon_fill',
+          name: 'ROI Exploration Area',
+          polygon: {
+            hierarchy: new Cesium.PolygonHierarchy(positions),
+            material: Cesium.Color.fromCssColorString('#06b6d4').withAlpha(0.25),
+            perPositionHeight: true,
+            outline: true,
+            outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
+            outlineWidth: 2,
+          },
+        });
+      }
+
+      // Vertex markers
+      roiPolygon.forEach((pt, idx) => {
+        viewer.entities.add({
+          id: `roi_vertex_marker_${idx}`,
+          name: `ROI Vertex ${idx + 1}`,
+          position: Cesium.Cartesian3.fromDegrees(pt.lon, pt.lat, 40.0, moon),
+          point: {
+            pixelSize: 8,
+            color: Cesium.Color.fromCssColorString('#38bdf8'),
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 2,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+          label: {
+            text: `${idx + 1}`,
+            font: 'bold 12px "JetBrains Mono", monospace',
+            scale: 0.8,
+            fillColor: Cesium.Color.WHITE,
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            pixelOffset: new Cesium.Cartesian2(0, -14),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+        });
+      });
+    }
+
+    // 0c. Discovered Optimal Candidate Pinpoint
+    if (optimalCandidate) {
+      viewer.entities.add({
+        id: 'roi_optimal_pin',
+        name: 'Optimal Discovered Site',
+        position: Cesium.Cartesian3.fromDegrees(
+          optimalCandidate.lon,
+          optimalCandidate.lat,
+          50.0,
+          moon
+        ),
+        point: {
+          pixelSize: 18,
+          color: Cesium.Color.fromCssColorString('#10b981'),
+          outlineColor: Cesium.Color.fromCssColorString('#fef08a'),
+          outlineWidth: 3.5,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: `⭐ OPTIMAL CANDIDATE (${optimalCandidate.score}/100)\n${optimalCandidate.name || 'Optimal Landing Zone'}`,
+          font: 'bold 22px "JetBrains Mono", monospace',
+          scale: 0.55,
+          fillColor: Cesium.Color.fromCssColorString('#34d399'),
+          outlineColor: Cesium.Color.fromCssColorString('#020617'),
+          outlineWidth: 4,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(0, -32),
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.95)'),
+          backgroundPadding: new Cesium.Cartesian2(14, 8),
           showBackground: true,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
@@ -1378,6 +1517,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     showGraticule,
     allSites,
     pendingPickCoords,
+    roiPolygon,
+    optimalCandidate,
   ]);
 
   // High-Speed Auto-Spin Turntable Loop
