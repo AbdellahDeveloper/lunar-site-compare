@@ -4,6 +4,7 @@ import { getHorizonElevation } from './horizon';
 
 const RAD2DEG = 180 / Math.PI;
 const DEG2RAD = Math.PI / 180;
+export const SOLAR_CONSTANT_W_M2 = 1361; // Total Solar Irradiance (TSI) at 1 AU (W/m²)
 const SUN_PHYSICAL_RADIUS_KM = 695700;
 const EARTH_PHYSICAL_RADIUS_KM = 6371;
 

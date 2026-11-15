@@ -43,6 +43,8 @@ describe('ROI Site Search & Optimization Engine', () => {
     expect(result.longestSunHours).toBeGreaterThan(0);
     expect(result.longestEarthHours).toBeGreaterThan(0);
     expect(result.sunlightPercent).toBeGreaterThan(0);
+    expect(result.avgPowerFlux).toBeGreaterThan(0);
+    expect(result.avgTrackingFlux).toBeGreaterThan(0);
     expect(result.evaluatedCandidatesCount).toBeGreaterThan(3);
   });
 });

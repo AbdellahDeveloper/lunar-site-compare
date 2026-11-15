@@ -39,8 +39,16 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
   onRedraw,
   onClose,
 }) => {
-  const { bestSite, score, longestSunHours, longestEarthHours, sunlightPercent, avgPowerFlux, evaluatedCandidatesCount } =
-    result;
+  const {
+    bestSite,
+    score,
+    longestSunHours,
+    longestEarthHours,
+    sunlightPercent,
+    avgPowerFlux,
+    avgTrackingFlux,
+    evaluatedCandidatesCount,
+  } = result;
 
   const latStr = `${Math.abs(bestSite.lat).toFixed(3)}°${bestSite.lat < 0 ? 'S' : 'N'}`;
   const lonStr = `${Math.abs(bestSite.lon).toFixed(3)}°${bestSite.lon >= 0 ? 'E' : 'W'}`;
@@ -179,11 +187,18 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
                 Avg Solar Flux
               </span>
               <Badge variant="outline" className="text-[10px] bg-yellow-950/30 text-yellow-400 border-yellow-500/30">
-                Flux Density
+                {avgPowerFlux > 0 ? `${((avgPowerFlux / 1361) * 100).toFixed(0)}% Intensity` : '0%'}
               </Badge>
             </div>
-            <div className="mt-2 text-xl font-bold text-yellow-400 font-mono">
-              {avgPowerFlux.toFixed(0)} W/m²
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-xl font-bold text-yellow-400 font-mono">
+                {avgPowerFlux.toFixed(0)} W/m²
+              </span>
+              {avgTrackingFlux > 0 && (
+                <span className="text-xs text-emerald-400 font-mono">
+                  ({avgTrackingFlux.toFixed(0)} W/m² tracking)
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-slate-400 mt-1">
               Average horizontal solar collector irradiance across the window.

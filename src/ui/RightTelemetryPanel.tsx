@@ -208,7 +208,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
               <InfoTooltip text="Instantaneous solar irradiance (W/m²) received at current sun elevation." />
             </span>
             <span className="text-solar-gold font-bold">
-              {point.trackingPowerFlux.toFixed(0)} W/m²
+              {(point.trackingPowerFlux * 1361).toFixed(0)} W/m²
             </span>
           </div>
 

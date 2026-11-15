@@ -3,7 +3,7 @@ import { createLocalFrame } from './local';
 import { generateCustomHorizon } from '../data/horizons';
 import { getCachedCelestialVectors } from './series';
 import { findBodyIntervals, intersectIntervals } from './events';
-import { evaluateVisibilityAtInstant } from './visibility';
+import { evaluateVisibilityAtInstant, SOLAR_CONSTANT_W_M2 } from './visibility';
 
 export interface RoiPoint {
   lat: number;
@@ -21,6 +21,7 @@ export interface CandidateEvaluation {
   sunlightPercent: number;
   earthVisPercent: number;
   avgPowerFlux: number;
+  avgTrackingFlux: number;
   score: number;
 }
 
@@ -33,6 +34,7 @@ export interface OptimalRoiResult {
   sunlightPercent: number;
   earthVisPercent: number;
   avgPowerFlux: number;
+  avgTrackingFlux: number;
   evaluatedCandidatesCount: number;
   polygon: RoiPoint[];
   centroid: RoiPoint;
@@ -301,8 +303,10 @@ export function findOptimalSiteInPolygon(
     const sunlightPercent = (totalSunHours / windowHours) * 100;
     const earthVisPercent = (totalEarthHours / windowHours) * 100;
 
-    // Calculate solar power flux across cached time points
-    let sumPower = 0;
+    // Calculate solar power flux across cached time points (in W/m²)
+    // Total Solar Irradiance at 1 AU = 1361 W/m²
+    let sumHorizontalPower = 0;
+    let sumTrackingPower = 0;
     const sampleInterval = Math.max(1, Math.floor(cached.times.length / 24)); // sample ~24 points
     let sampledCount = 0;
 
@@ -310,10 +314,12 @@ export function findOptimalSiteInPolygon(
       const sVec = cached.sunVecs[i];
       const eVec = cached.earthVecs[i];
       const vis = evaluateVisibilityAtInstant(sVec, eVec, frame, mask, cand.elevKm);
-      sumPower += vis.horizontalPowerFlux;
+      sumHorizontalPower += vis.horizontalPowerFlux * SOLAR_CONSTANT_W_M2;
+      sumTrackingPower += vis.trackingPowerFlux * SOLAR_CONSTANT_W_M2;
       sampledCount++;
     }
-    const avgPowerFlux = sampledCount > 0 ? sumPower / sampledCount : 0;
+    const avgPowerFlux = sampledCount > 0 ? sumHorizontalPower / sampledCount : 0;
+    const avgTrackingFlux = sampledCount > 0 ? sumTrackingPower / sampledCount : 0;
 
     // Fitness Scoring Function:
     // Criteria:
@@ -321,10 +327,11 @@ export function findOptimalSiteInPolygon(
     // 2. Highest consecutive Earth direct communication: 35%
     // 3. No shadows / highest sunlight duty cycle (sunny for power generation): 20%
     // 4. Incident solar power flux: 10%
+    const effectiveFlux = Math.max(avgPowerFlux, avgTrackingFlux * 0.7);
     const consecutiveSunScore = Math.min(35, (longestSunHours / windowHours) * 35);
     const consecutiveEarthScore = Math.min(35, (longestEarthHours / windowHours) * 35);
     const sunnyNoShadowScore = Math.min(20, (totalSunHours / windowHours) * 20);
-    const powerFluxScore = Math.min(10, (avgPowerFlux / 400) * 10);
+    const powerFluxScore = Math.min(10, (effectiveFlux / 500) * 10);
 
     const score = Math.round(
       consecutiveSunScore + consecutiveEarthScore + sunnyNoShadowScore + powerFluxScore
@@ -341,6 +348,7 @@ export function findOptimalSiteInPolygon(
       sunlightPercent,
       earthVisPercent,
       avgPowerFlux,
+      avgTrackingFlux,
       score,
     });
   }
@@ -383,6 +391,7 @@ export function findOptimalSiteInPolygon(
     sunlightPercent: best.sunlightPercent,
     earthVisPercent: best.earthVisPercent,
     avgPowerFlux: best.avgPowerFlux,
+    avgTrackingFlux: best.avgTrackingFlux,
     evaluatedCandidatesCount: evaluations.length,
     polygon,
     centroid: { lat: centerLat, lon: centerLon },
