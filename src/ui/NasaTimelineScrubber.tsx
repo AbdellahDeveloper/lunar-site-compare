@@ -134,7 +134,7 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
   ];
 
   return (
-    <div className="z-30 w-full bg-space-950/95 backdrop-blur-lg border-t border-slate-800 px-4 py-2.5 shadow-2xl flex flex-col gap-2 select-none">
+    <div className="z-30 w-full h-full bg-space-950/95 backdrop-blur-lg px-4 py-2.5 shadow-2xl flex flex-col justify-between gap-2 select-none overflow-y-auto no-scrollbar">
       {/* Dual-Location Telemetry Tracks Container */}
       <div className="relative w-full flex flex-col gap-2 bg-space-900/95 rounded-xl p-3 border border-slate-800/90 shadow-inner font-mono">
         {/* Track Header showing Start Date, Scrub Guide, and End Date */}
