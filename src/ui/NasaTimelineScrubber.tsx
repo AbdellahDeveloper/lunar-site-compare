@@ -4,7 +4,6 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Clock,
   Sun,
   Radio,
 } from 'lucide-react';
@@ -91,18 +90,13 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
     }
   };
 
-  // Direct text entry states for START, CURRENT, and END
+  // Direct text entry states for START and END
   const [startText, setStartText] = useState(new Date(windowStartMs).toISOString().replace('.000', ''));
-  const [utcText, setUtcText] = useState(currentDate.toISOString().replace('.000', ''));
   const [endText, setEndText] = useState(new Date(windowEndMs).toISOString().replace('.000', ''));
 
   useEffect(() => {
     setStartText(new Date(windowStartMs).toISOString().replace('.000', ''));
   }, [windowStartMs]);
-
-  useEffect(() => {
-    setUtcText(new Date(currentScrubMs).toISOString().replace('.000', ''));
-  }, [currentScrubMs]);
 
   useEffect(() => {
     setEndText(new Date(windowEndMs).toISOString().replace('.000', ''));
@@ -115,14 +109,6 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
       if (onUpdateWindow && parsed < windowEndMs) {
         onUpdateWindow(parsed, windowEndMs);
       }
-      onScrub(parsed);
-    }
-  };
-
-  const handleCurrentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = new Date(utcText).getTime();
-    if (!isNaN(parsed) && parsed >= windowStartMs && parsed <= windowEndMs) {
       onScrub(parsed);
     }
   };
@@ -399,30 +385,6 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
               size="xs"
               variant="ghost"
               className="h-5 px-1.5 text-[10px] text-emerald-300 hover:text-white hover:bg-emerald-500/20 rounded font-bold"
-            >
-              Jump
-            </Button>
-          </form>
-
-          {/* CURRENT TIME */}
-          <form
-            onSubmit={handleCurrentSubmit}
-            className="flex items-center gap-1.5 bg-space-900 px-2.5 py-1 rounded-xl border border-cyan-500/60 shadow-md shadow-cyan-950/40"
-            title="Current Scrub Time (Edit and press Enter/Jump to scrub to exact UTC time)"
-          >
-            <Clock className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="text-[10px] font-bold text-cyan-300 uppercase tracking-wider">CUR:</span>
-            <input
-              type="text"
-              value={utcText}
-              onChange={(e) => setUtcText(e.target.value)}
-              className="bg-transparent text-slate-100 font-bold tracking-wide w-36 sm:w-40 text-[11px] focus:outline-none focus:text-cyan-200"
-            />
-            <Button
-              type="submit"
-              size="xs"
-              variant="secondary"
-              className="h-5 px-1.5 text-[10px] text-cyan-300 hover:text-white bg-cyan-950/60 border border-cyan-500/40 font-bold"
             >
               Jump
             </Button>
