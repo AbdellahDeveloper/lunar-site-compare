@@ -87,7 +87,9 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
         variant="secondary"
         size="icon-sm"
         onClick={onToggleCollapse}
-        className="absolute top-2.5 left-2 z-30 rounded-md border border-slate-700 shadow-md bg-space-900/90 text-slate-300 hover:text-white"
+        className={`absolute top-2.5 z-30 rounded-md border border-slate-700 shadow-md bg-space-900/90 text-slate-300 hover:text-white transition-all ${
+          isCollapsed ? 'left-1.5' : 'left-1'
+        }`}
         title={isCollapsed ? 'Expand Face-Off' : 'Collapse Face-Off'}
       >
         {isCollapsed ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -103,17 +105,17 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
       ) : (
         <div className="flex-1 flex flex-col p-3 gap-3 overflow-y-auto no-scrollbar">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-            <div className="flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-solar-gold" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-100">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 pl-7">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Trophy className="w-4 h-4 text-solar-gold shrink-0" />
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-100 truncate">
                 Base Face-Off
               </span>
-              <Badge variant="viable" className="text-[9px] py-0 h-4">
+              <Badge variant="viable" className="text-[9px] py-0 h-4 shrink-0">
                 Simple View
               </Badge>
             </div>
-            <span className="text-[10px] text-slate-400">Site A vs Site B</span>
+            <span className="text-[10px] text-slate-400 shrink-0">Site A vs Site B</span>
           </div>
 
           {/* Active Contenders Summary Card (Location selection managed in Left Panel) */}
