@@ -30,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  InfoTooltip,
 } from '@/components/ui';
 
 interface MissionOverviewModalProps {
@@ -482,20 +483,44 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
                 Mission Operational Weight Presets
               </span>
               <div className="grid grid-cols-4 gap-2">
-                {Object.entries(MISSION_PRESET_PROFILES).map(([key, prof]) => (
-                  <Button
-                    key={key}
-                    variant={selectedPreset === key ? 'nasa' : 'secondary'}
-                    size="sm"
-                    onClick={() => handleApplyPreset(key)}
-                    className="flex-col h-auto py-2 px-3 text-left items-start justify-start"
-                  >
-                    <span className="font-bold text-xs truncate w-full">{prof.name}</span>
-                    <span className="text-[10px] text-slate-400 line-clamp-2 mt-0.5 font-normal">
-                      {prof.description}
-                    </span>
-                  </Button>
-                ))}
+                {Object.entries(MISSION_PRESET_PROFILES).map(([key, prof]) => {
+                  const shortNames: Record<string, string> = {
+                    balanced: 'Standard HLS',
+                    solarPriority: 'Solar Science',
+                    commPriority: 'Direct Earth (DTE)',
+                    psrProspector: 'Ice / PSR Rover',
+                  };
+                  const displayName = shortNames[key] || prof.name;
+
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleApplyPreset(key)}
+                      className={`flex items-center justify-between gap-1.5 px-3 py-2.5 rounded-lg cursor-pointer transition-all border text-xs font-mono select-none ${
+                        selectedPreset === key
+                          ? 'bg-cyan-600 text-white border-cyan-400 shadow-md shadow-cyan-900/40 ring-1 ring-cyan-300'
+                          : 'bg-space-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-space-800'
+                      }`}
+                    >
+                      <span className="font-bold truncate" title={prof.name}>
+                        {displayName}
+                      </span>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <InfoTooltip
+                          text={
+                            <div className="flex flex-col gap-1">
+                              <span className="font-bold text-cyan-300 text-xs">{prof.name}</span>
+                              <span className="text-slate-300 text-[11px] leading-relaxed">
+                                {prof.description}
+                              </span>
+                            </div>
+                          }
+                          side="top"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
