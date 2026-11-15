@@ -53,6 +53,15 @@ export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
 
 export const RIBBON_TOOLS: RibbonTool[] = [
   {
+    id: 'landing-sites',
+    label: 'Landing Sites',
+    icon: Rocket,
+    targetPanel: 'left',
+    targetDescription: 'Artemis III official 9 candidate regions, dual-location switcher, slope & hazards',
+    category: 'Mission Planning',
+    badgeText: 'Artemis III',
+  },
+  {
     id: 'layer-management',
     label: 'Layer Management',
     icon: Layers,
@@ -62,15 +71,6 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     badgeText: 'Layers',
   },
   {
-    id: 'measurements',
-    label: 'Measurements',
-    icon: Radio,
-    targetPanel: 'right',
-    targetDescription: 'Instantaneous solar power flux (W/m²), direct-to-Earth link margin (dB) & geodesic arc',
-    category: 'Telemetry & Analysis',
-    badgeText: 'Telemetry',
-  },
-  {
     id: 'coordinates',
     label: 'Coordinates',
     icon: Compass,
@@ -78,15 +78,6 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     targetDescription: 'Selenocentric lat/lon, polar stereographic projection, distance and azimuth bearing',
     category: 'GIS & Mapping',
     badgeText: 'Coords',
-  },
-  {
-    id: 'landing-sites',
-    label: 'Landing Sites',
-    icon: Rocket,
-    targetPanel: 'left',
-    targetDescription: 'Artemis III official 9 candidate regions, dual-location switcher, slope & hazards',
-    category: 'Mission Planning',
-    badgeText: 'Artemis III',
   },
   {
     id: 'places-of-interest',

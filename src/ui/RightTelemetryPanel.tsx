@@ -247,11 +247,10 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = React.mem
   const isCameraMode = activeTool === 'places-of-interest';
   const isShadingMode = activeTool === 'moon-shading';
   const isTelemetryMode =
-    activeTool === 'measurements' ||
-    (!isPolarSkyMode &&
-      !isMonteCarloMode &&
-      !isCameraMode &&
-      !isShadingMode);
+    !isPolarSkyMode &&
+    !isMonteCarloMode &&
+    !isCameraMode &&
+    !isShadingMode;
 
   const getSectionTitle = () => {
     if (isPolarSkyMode) return 'Polar Sky Plot';
