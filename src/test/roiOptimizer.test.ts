@@ -46,3 +46,4 @@ describe('ROI Site Search & Optimization Engine', () => {
     expect(result.evaluatedCandidatesCount).toBeGreaterThan(3);
   });
 });
+

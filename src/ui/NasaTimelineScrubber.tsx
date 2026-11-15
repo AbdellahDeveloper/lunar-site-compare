@@ -243,9 +243,9 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
                   <Radio className="w-2.5 h-2.5" />
                   <span>Earth Link (Blue)</span>
                 </span>
-                <span className="flex items-center gap-1 text-red-400 font-bold">
+                <span className="flex items-center gap-1 text-red-400 font-medium">
                   <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
-                  <span>Interesting Time Zone</span>
+                  <span>Overlap (Red)</span>
                 </span>
               </div>
             </div>
@@ -262,14 +262,8 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
                     key={`bothA_${idx}`}
                     className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
                     style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
-                    title={`Location A - Interesting Time Zone: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
-                  >
-                    {width > 8 && (
-                      <span className="text-[8px] font-bold text-red-200 uppercase tracking-widest px-1 py-0.2 rounded bg-red-950/90 border border-red-500 shadow-xs whitespace-nowrap">
-                        ★ Interesting Zone
-                      </span>
-                    )}
-                  </div>
+                    title={`Location A: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+                  />
                 );
               })}
 
@@ -325,9 +319,9 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
                     <Radio className="w-2.5 h-2.5" />
                     <span>Earth Link (Blue)</span>
                   </span>
-                  <span className="flex items-center gap-1 text-red-400 font-bold">
+                  <span className="flex items-center gap-1 text-red-400 font-medium">
                     <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
-                    <span>Interesting Time Zone</span>
+                    <span>Overlap (Red)</span>
                   </span>
                 </div>
               </div>
@@ -344,14 +338,8 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
                       key={`bothB_${idx}`}
                       className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
                       style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
-                      title={`Location B - Interesting Time Zone: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
-                    >
-                      {width > 8 && (
-                        <span className="text-[8px] font-bold text-red-200 uppercase tracking-widest px-1 py-0.2 rounded bg-red-950/90 border border-red-500 shadow-xs whitespace-nowrap">
-                          ★ Interesting Zone
-                        </span>
-                      )}
-                    </div>
+                      title={`Location B: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+                    />
                   );
                 })}
 

@@ -96,3 +96,4 @@ export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
     </div>
   );
 };
+
