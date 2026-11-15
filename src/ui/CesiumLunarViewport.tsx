@@ -1736,7 +1736,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         {isPickingLocation && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-4 py-2 rounded-full bg-space-950/95 border border-cyan-400 text-cyan-200 text-xs font-mono shadow-2xl backdrop-blur-md animate-fade-in">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping inline-block" />
-            <span className="font-bold text-slate-100">3D TARGET PICKER: Click anywhere on lunar surface</span>
+            <span className="font-bold text-slate-100">Click anywhere on lunar surface to pick site</span>
             <Button
               variant="ghost"
               size="xs"

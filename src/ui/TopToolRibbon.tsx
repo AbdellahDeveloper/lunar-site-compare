@@ -49,15 +49,6 @@ export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
     category: 'Mission Planning',
     badgeText: 'Draw Zone',
   },
-  {
-    id: 'landing-sites',
-    label: 'Choose Sites',
-    icon: Rocket,
-    targetPanel: 'left',
-    targetDescription: 'Select Artemis candidate locations for Site A and Site B in the left sidebar',
-    category: 'Mission Planning',
-    badgeText: 'Sites A/B',
-  },
 ];
 
 export const RIBBON_TOOLS: RibbonTool[] = [
