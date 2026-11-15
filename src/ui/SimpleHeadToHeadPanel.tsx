@@ -88,7 +88,7 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
         size="icon-sm"
         onClick={onToggleCollapse}
         className={`absolute top-2.5 z-30 rounded-md border border-slate-700 shadow-md bg-space-900/90 text-slate-300 hover:text-white transition-all ${
-          isCollapsed ? 'left-1.5' : 'left-1'
+          isCollapsed ? 'left-1.5' : 'left-0.5'
         }`}
         title={isCollapsed ? 'Expand Face-Off' : 'Collapse Face-Off'}
       >
@@ -105,7 +105,7 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
       ) : (
         <div className="flex-1 flex flex-col p-3 gap-3 overflow-y-auto no-scrollbar">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800 pl-7">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 pl-11">
             <div className="flex items-center gap-1.5 min-w-0">
               <Trophy className="w-4 h-4 text-solar-gold shrink-0" />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-100 truncate">

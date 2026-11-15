@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { TimeInterval, Site } from '../types';
+import { Button } from '@/components/ui';
 import {
-  Play,
+  Calendar,
   Pause,
+  Play,
+  Radio,
   RotateCcw,
   Sun,
-  Radio,
-  Calendar,
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Site, TimeInterval } from '../types';
 
 interface NasaTimelineScrubberProps {
   currentScrubMs: number;
@@ -88,8 +88,8 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.m
     return bothUpIntervalsB && bothUpIntervalsB.length > 0
       ? bothUpIntervalsB
       : sunIntervalsB && earthIntervalsB
-      ? computeOverlap(sunIntervalsB, earthIntervalsB)
-      : [];
+        ? computeOverlap(sunIntervalsB, earthIntervalsB)
+        : [];
   }, [bothUpIntervalsB, sunIntervalsB, earthIntervalsB]);
 
   // Interactive timeline track scrubber ref & state
@@ -111,7 +111,7 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.m
     isDraggingRef.current = true;
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {}
+    } catch { }
     scrubFromPointer(e.clientX);
   };
 
@@ -126,7 +126,7 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.m
       isDraggingRef.current = false;
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
+      } catch { }
     }
   };
 

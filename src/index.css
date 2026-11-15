@@ -37,6 +37,7 @@
 }
 
 /* Suppress Cesium default credit, attribution & token banners */
+.cesium-viewer-bottom,
 .cesium-credit-container,
 .cesium-credit-expand-link,
 .cesium-widget-credits,
@@ -44,10 +45,17 @@
 .cesium-credit-textContainer,
 .cesium-credit-wrapper,
 .cesium-credit-lightbox,
-.cesium-credit-lightbox-overlay {
+.cesium-credit-lightbox-overlay,
+.cesium-credit-lightbox-title,
+.cesium-credit-lightbox-close {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
   pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
 }
 

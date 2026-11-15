@@ -270,7 +270,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = React.mem
         size="icon-sm"
         onClick={onToggleCollapse}
         className={`absolute top-2.5 z-30 rounded-md border border-slate-700 shadow-md bg-space-900/90 text-slate-300 hover:text-white transition-all ${
-          isCollapsed ? 'left-1.5' : 'left-1'
+          isCollapsed ? 'left-1.5' : 'left-0.5'
         }`}
         title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
       >
@@ -286,7 +286,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = React.mem
       ) : (
         <div className="flex-1 flex flex-col p-3 gap-3 overflow-y-auto no-scrollbar">
           {/* Minimalist Section Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 pl-7">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 pl-11">
             <div className="flex items-center gap-1.5">
               {isPolarSkyMode && <Disc className="w-3.5 h-3.5 text-cyan-400" />}
               {isMonteCarloMode && <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />}

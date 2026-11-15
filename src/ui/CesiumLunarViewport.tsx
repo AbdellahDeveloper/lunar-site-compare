@@ -381,6 +381,11 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     // camera frustums, horizon culling, and math scale to the Moon instead of Earth (WGS84)
     Cesium.Ellipsoid.default = Cesium.Ellipsoid.MOON;
 
+    // Suppress Cesium ion default access token warning credit popup / banner entirely
+    try {
+      (Cesium.Ion as any).getDefaultTokenCredit = () => undefined;
+    } catch {}
+
     if ((import.meta as any).env?.VITE_CESIUM_ION_TOKEN) {
       Cesium.Ion.defaultAccessToken = (import.meta as any).env.VITE_CESIUM_ION_TOKEN;
     }
@@ -390,6 +395,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
     const viewer = new Cesium.Viewer(container, {
       creditContainer: detachedCreditContainer,
+      creditViewport: detachedCreditContainer,
       ellipsoid: Cesium.Ellipsoid.MOON,
       globe: new Cesium.Globe(Cesium.Ellipsoid.MOON),
       mapProjection: new Cesium.GeographicProjection(Cesium.Ellipsoid.MOON),
@@ -417,6 +423,13 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         },
       },
     });
+
+    if (viewer.bottomContainer) {
+      (viewer.bottomContainer as HTMLElement).style.display = 'none';
+      try {
+        viewer.bottomContainer.remove();
+      } catch {}
+    }
 
     // Clamp high-DPI device pixel ratio to 1.25 max to prevent fillrate choke on 4K/Retina displays
     viewer.resolutionScale = Math.min(window.devicePixelRatio || 1.0, 1.25);
@@ -893,7 +906,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     // Recommended: Load Official Cesium Moon 3D Tileset (Asset ID 2684829 on Cesium ion)
     // Instead of rendering the Moon on Cesium.Globe with 2D raster tiles (which struggle with polar pinching),
     // load the Cesium Moon 3D Tileset and hide the default globe.
-    Cesium.Cesium3DTileset.fromIonAssetId(2684829)
+    Cesium.Cesium3DTileset.fromIonAssetId(2684829, { showCreditsOnScreen: false })
       .then((moonTileset) => {
         if (!viewer.isDestroyed()) {
           viewer.scene.globe.show = false;
