@@ -110,11 +110,11 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
     setWeights((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleDownloadPdf = (targetSite: 'A' | 'B') => {
+  const handleDownloadPdf = async (targetSite: 'A' | 'B') => {
     setIsPdfGenerating(true);
     try {
       if (targetSite === 'A') {
-        generateHlsMissionPdf({
+        await generateHlsMissionPdf({
           site: siteA,
           evaluation: evaluationA,
           startDateIso,
@@ -122,7 +122,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
           siteScore: siteScoreA,
         });
       } else if (targetSite === 'B' && siteB && evaluationB && siteScoreB) {
-        generateHlsMissionPdf({
+        await generateHlsMissionPdf({
           site: siteB,
           evaluation: evaluationB,
           startDateIso,

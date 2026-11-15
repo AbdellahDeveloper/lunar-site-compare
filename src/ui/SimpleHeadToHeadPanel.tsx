@@ -33,7 +33,7 @@ export interface SimpleHeadToHeadPanelProps {
   onToggleCollapse: () => void;
 }
 
-export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = ({
+export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React.memo(({
   siteA,
   siteB,
   evaluationA,
@@ -91,7 +91,7 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = ({
   const winningSite = overallWinner === 'B' ? siteB : siteA;
 
   return (
-    <div className="relative z-20 w-full h-full bg-space-950/95 backdrop-blur-md flex flex-col overflow-hidden select-none font-mono">
+    <div className="relative z-20 w-full h-full bg-space-950/98 flex flex-col overflow-hidden select-none font-mono">
       {/* Collapse/Expand Toggle Tab */}
       <Button
         variant="secondary"
@@ -375,4 +375,4 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = ({
       )}
     </div>
   );
-};
+});

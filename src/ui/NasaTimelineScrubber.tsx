@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { TimeInterval, Site } from '../types';
 import {
   Play,
@@ -32,7 +32,7 @@ interface NasaTimelineScrubberProps {
   onUpdateWindow?: (startMs: number, endMs: number) => void;
 }
 
-export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
+export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = React.memo(({
   currentScrubMs,
   windowStartMs,
   windowEndMs,
@@ -78,17 +78,19 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
     return result;
   };
 
-  const effectiveBothUpA =
-    bothUpIntervalsA && bothUpIntervalsA.length > 0
+  const effectiveBothUpA = useMemo<TimeInterval[]>(() => {
+    return bothUpIntervalsA && bothUpIntervalsA.length > 0
       ? bothUpIntervalsA
       : computeOverlap(sunIntervalsA, earthIntervalsA);
+  }, [bothUpIntervalsA, sunIntervalsA, earthIntervalsA]);
 
-  const effectiveBothUpB =
-    bothUpIntervalsB && bothUpIntervalsB.length > 0
+  const effectiveBothUpB = useMemo<TimeInterval[]>(() => {
+    return bothUpIntervalsB && bothUpIntervalsB.length > 0
       ? bothUpIntervalsB
       : sunIntervalsB && earthIntervalsB
       ? computeOverlap(sunIntervalsB, earthIntervalsB)
       : [];
+  }, [bothUpIntervalsB, sunIntervalsB, earthIntervalsB]);
 
   // Interactive timeline track scrubber ref & state
   const timelineRef = useRef<HTMLDivElement | null>(null);
@@ -174,8 +176,165 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
     { value: 336, label: 'Turbo' },
   ];
 
+  // Memoize static interval tracks so scrub drag only animates the red needle
+  const renderedTracks = useMemo(() => (
+    <>
+      {/* GROUP 1: LOCATION A */}
+      <div className="flex flex-col gap-1 pointer-events-none">
+        <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+            <span className="uppercase tracking-wider">LOCATION A:</span>
+            <span className="text-slate-100 font-normal truncate max-w-[280px]">
+              {siteA.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
+            <span className="flex items-center gap-1 text-amber-400">
+              <Sun className="w-2.5 h-2.5" />
+              <span>Sun Light (Orange)</span>
+            </span>
+            <span className="flex items-center gap-1 text-cyan-400">
+              <Radio className="w-2.5 h-2.5" />
+              <span>Earth Link (Blue)</span>
+            </span>
+            <span className="flex items-center gap-1 text-red-400 font-medium">
+              <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
+              <span>Overlap (Red)</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Location A: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
+        <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
+          {/* Red Overlap Bracket holding both lines */}
+          {effectiveBothUpA.map((inv, idx) => {
+            const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+            const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+            const width = Math.max(0.6, x1 - x0);
+            return (
+              <div
+                key={`bothA_${idx}`}
+                className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
+                style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
+                title={`Location A: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+              />
+            );
+          })}
+
+          {/* Location A: Sun Track (Gold / Amber) */}
+          <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Sunlight Power Windows">
+            {sunIntervalsA.map((inv, idx) => {
+              const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+              const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+              return (
+                <div
+                  key={`sunA_${idx}`}
+                  className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
+                  style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Location A: Earth DTE Track (Sky Blue / Cyan) */}
+          <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Direct-to-Earth Comm Windows">
+            {earthIntervalsA.map((inv, idx) => {
+              const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+              const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+              return (
+                <div
+                  key={`earthA_${idx}`}
+                  className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
+                  style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* GROUP 2: LOCATION B (when present) */}
+      {siteB && sunIntervalsB && earthIntervalsB && (
+        <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-800/70 pointer-events-none">
+          <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="uppercase tracking-wider">LOCATION B:</span>
+              <span className="text-slate-100 font-normal truncate max-w-[280px]">
+                {siteB.name}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
+              <span className="flex items-center gap-1 text-amber-400">
+                <Sun className="w-2.5 h-2.5" />
+                <span>Sun Light (Orange)</span>
+              </span>
+              <span className="flex items-center gap-1 text-cyan-400">
+                <Radio className="w-2.5 h-2.5" />
+                <span>Earth Link (Blue)</span>
+              </span>
+              <span className="flex items-center gap-1 text-red-400 font-medium">
+                <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
+                <span>Overlap (Red)</span>
+              </span>
+            </div>
+          </div>
+
+          {/* Location B: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
+          <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
+            {/* Red Overlap Bracket holding both lines */}
+            {effectiveBothUpB.map((inv, idx) => {
+              const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+              const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+              const width = Math.max(0.6, x1 - x0);
+              return (
+                <div
+                  key={`bothB_${idx}`}
+                  className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
+                  style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
+                  title={`Location B: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
+                />
+              );
+            })}
+
+            {/* Location B: Sun Track (Gold / Amber) */}
+            <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Sunlight Power Windows">
+              {sunIntervalsB.map((inv, idx) => {
+                const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                return (
+                  <div
+                    key={`sunB_${idx}`}
+                    className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
+                    style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Location B: Earth DTE Track (Sky Blue / Cyan) */}
+            <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Direct-to-Earth Comm Windows">
+              {earthIntervalsB.map((inv, idx) => {
+                const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
+                const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
+                return (
+                  <div
+                    key={`earthB_${idx}`}
+                    className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
+                    style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  ), [siteA, siteB, sunIntervalsA, earthIntervalsA, effectiveBothUpA, sunIntervalsB, earthIntervalsB, effectiveBothUpB, windowStartMs, durationMs]);
+
   return (
-    <div className="z-30 w-full h-full bg-space-950/95 backdrop-blur-lg px-4 py-2.5 shadow-2xl flex flex-col justify-between gap-2 select-none overflow-y-auto no-scrollbar">
+    <div className="z-30 w-full h-full bg-space-950/98 px-4 py-2.5 shadow-2xl flex flex-col justify-between gap-2 select-none overflow-y-auto no-scrollbar">
       {/* Dual-Location Telemetry Tracks Container */}
       <div className="relative w-full flex flex-col gap-2 bg-space-900/95 rounded-xl p-3 border border-slate-800/90 shadow-inner font-mono">
         {/* Track Header showing Start Date, Scrub Guide, and End Date */}
@@ -224,157 +383,8 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
             <div className="w-2.5 h-1.5 bg-red-500 rounded-t shadow-md shadow-red-500" />
           </div>
 
-          {/* GROUP 1: LOCATION A */}
-          <div className="flex flex-col gap-1 pointer-events-none">
-            <div className="flex items-center justify-between text-[11px] text-cyan-300 font-bold">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
-                <span className="uppercase tracking-wider">LOCATION A:</span>
-                <span className="text-slate-100 font-normal truncate max-w-[280px]">
-                  {siteA.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
-                <span className="flex items-center gap-1 text-amber-400">
-                  <Sun className="w-2.5 h-2.5" />
-                  <span>Sun Light (Orange)</span>
-                </span>
-                <span className="flex items-center gap-1 text-cyan-400">
-                  <Radio className="w-2.5 h-2.5" />
-                  <span>Earth Link (Blue)</span>
-                </span>
-                <span className="flex items-center gap-1 text-red-400 font-medium">
-                  <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
-                  <span>Overlap (Red)</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Location A: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
-            <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
-              {/* Red Overlap Bracket holding both lines */}
-              {effectiveBothUpA.map((inv, idx) => {
-                const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                const width = Math.max(0.6, x1 - x0);
-                return (
-                  <div
-                    key={`bothA_${idx}`}
-                    className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
-                    style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
-                    title={`Location A: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
-                  />
-                );
-              })}
-
-              {/* Location A: Sun Track (Gold / Amber) */}
-              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Sunlight Power Windows">
-                {sunIntervalsA.map((inv, idx) => {
-                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                  return (
-                    <div
-                      key={`sunA_${idx}`}
-                      className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
-                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                    />
-                  );
-                })}
-              </div>
-
-              {/* Location A: Earth DTE Track (Sky Blue / Cyan) */}
-              <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location A: Direct-to-Earth Comm Windows">
-                {earthIntervalsA.map((inv, idx) => {
-                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                  return (
-                    <div
-                      key={`earthA_${idx}`}
-                      className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
-                      style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* GROUP 2: LOCATION B (when present) */}
-          {siteB && sunIntervalsB && earthIntervalsB && (
-            <div className="flex flex-col gap-1 pt-1.5 border-t border-slate-800/70 pointer-events-none">
-              <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                  <span className="uppercase tracking-wider">LOCATION B:</span>
-                  <span className="text-slate-100 font-normal truncate max-w-[280px]">
-                    {siteB.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 text-[9px] text-slate-400 font-normal shrink-0">
-                  <span className="flex items-center gap-1 text-amber-400">
-                    <Sun className="w-2.5 h-2.5" />
-                    <span>Sun Light (Orange)</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-cyan-400">
-                    <Radio className="w-2.5 h-2.5" />
-                    <span>Earth Link (Blue)</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-red-400 font-medium">
-                    <span className="w-2 h-2 rounded-xs bg-red-500 border border-red-300 shadow-xs" />
-                    <span>Overlap (Red)</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Location B: Combined Track Area holding Sun, Earth, and Red Overlap Brackets */}
-              <div className="relative w-full flex flex-col gap-1 p-1 rounded-lg bg-space-950/60 border border-slate-800/80">
-                {/* Red Overlap Bracket holding both lines */}
-                {effectiveBothUpB.map((inv, idx) => {
-                  const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                  const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                  const width = Math.max(0.6, x1 - x0);
-                  return (
-                    <div
-                      key={`bothB_${idx}`}
-                      className="absolute -top-0.5 -bottom-0.5 z-10 rounded border-2 border-red-500 bg-red-500/25 shadow-[0_0_12px_rgba(239,68,68,0.6)] flex items-center justify-center transition-all pointer-events-none group"
-                      style={{ left: `${Math.max(0, x0)}%`, width: `${width}%` }}
-                      title={`Location B: Both Sun & Earth Link Active (${inv.durationHours.toFixed(1)}h)`}
-                    />
-                  );
-                })}
-
-                {/* Location B: Sun Track (Gold / Amber) */}
-                <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Sunlight Power Windows">
-                  {sunIntervalsB.map((inv, idx) => {
-                    const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                    const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                    return (
-                      <div
-                        key={`sunB_${idx}`}
-                        className="absolute top-0 bottom-0 bg-amber-500 shadow-xs shadow-amber-500/50"
-                        style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                      />
-                    );
-                  })}
-                </div>
-
-                {/* Location B: Earth DTE Track (Sky Blue / Cyan) */}
-                <div className="relative w-full h-2 rounded bg-space-950 border border-slate-800/80 overflow-hidden" title="Location B: Direct-to-Earth Comm Windows">
-                  {earthIntervalsB.map((inv, idx) => {
-                    const x0 = ((inv.startMs - windowStartMs) / durationMs) * 100;
-                    const x1 = ((inv.endMs - windowStartMs) / durationMs) * 100;
-                    return (
-                      <div
-                        key={`earthB_${idx}`}
-                        className="absolute top-0 bottom-0 bg-cyan-400 shadow-xs shadow-cyan-400/50"
-                        style={{ left: `${Math.max(0, x0)}%`, width: `${Math.max(0.5, x1 - x0)}%` }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Memoized Location A & B Visual Tracks */}
+          {renderedTracks}
         </div>
       </div>
 
@@ -555,4 +565,4 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
       </div>
     </div>
   );
-};
+});

@@ -93,7 +93,7 @@ function bodyVectorToLatLon(vec?: Vector3D) {
   return { lat, lon };
 }
 
-export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
+export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
   activeTool,
   siteA,
   siteB,
@@ -160,7 +160,7 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
 
   return (
     <div
-      className="relative z-20 w-full h-full bg-space-950/95 backdrop-blur-md flex flex-col overflow-hidden select-none"
+      className="relative z-20 w-full h-full bg-space-950/98 flex flex-col overflow-hidden select-none"
     >
       {/* Collapse/Expand Toggle Tab */}
       <Button
@@ -584,4 +584,4 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
       )}
     </div>
   );
-};
+});

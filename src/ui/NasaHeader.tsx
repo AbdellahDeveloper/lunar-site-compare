@@ -23,7 +23,7 @@ interface NasaHeaderProps {
   onShareUrl: () => void;
 }
 
-export const NasaHeader: React.FC<NasaHeaderProps> = ({
+export const NasaHeader: React.FC<NasaHeaderProps> = React.memo(({
   uiMode,
   onSetUIMode,
   onOpenLearnTour,
@@ -38,7 +38,7 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
   };
 
   return (
-    <header className="z-30 w-full bg-space-950/95 backdrop-blur-md border-b border-slate-700/80 px-4 py-2 shadow-2xl">
+    <header className="z-30 w-full bg-space-950/98 border-b border-slate-700/80 px-4 py-2 shadow-2xl">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
         {/* NASA Mission Operations Logo & Title */}
         <div className="flex items-center gap-3">
@@ -116,5 +116,5 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
       </div>
     </header>
   );
-};
+});
 export default NasaHeader;

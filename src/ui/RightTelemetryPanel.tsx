@@ -66,7 +66,7 @@ interface RightTelemetryPanelProps {
   onFitMoon: () => void;
 }
 
-export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
+export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = React.memo(({
   activeTool,
   siteA,
   siteB,
@@ -263,7 +263,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
 
   return (
     <div
-      className="relative z-20 w-full h-full bg-space-950/95 backdrop-blur-md flex flex-col overflow-hidden select-none"
+      className="relative z-20 w-full h-full bg-space-950/98 flex flex-col overflow-hidden select-none"
     >
       {/* Collapse/Expand Toggle Tab */}
       <Button
@@ -577,4 +577,4 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
       )}
     </div>
   );
-};
+});

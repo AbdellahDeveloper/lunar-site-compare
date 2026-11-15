@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf';
 import { Site, ScenarioEvaluation, SiteScoreResult } from '../types';
 
 export interface GenerateHlsPdfOptions {
@@ -11,8 +10,10 @@ export interface GenerateHlsPdfOptions {
 
 /**
  * Generates an executive-grade, publication-quality NASA Artemis III HLS Flight Overview PDF Memorandum.
+ * Uses dynamic import('jspdf') to avoid bundling ~350KB into the critical initial page payload.
  */
-export function generateHlsMissionPdf(options: GenerateHlsPdfOptions): void {
+export async function generateHlsMissionPdf(options: GenerateHlsPdfOptions): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const { site, evaluation, startDateIso, windowDays, siteScore } = options;
   const metrics = evaluation.metrics;
   const windowHours = windowDays * 24;

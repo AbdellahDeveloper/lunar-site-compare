@@ -329,26 +329,28 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       fullscreenButton: false,
       vrButton: false,
       shouldAnimate: false,
+      requestRenderMode: true,
+      maximumRenderTimeChange: Infinity,
       contextOptions: {
         webgl: {
           alpha: false,
           antialias: true,
-          preserveDrawingBuffer: true,
+          preserveDrawingBuffer: false,
         },
       },
     });
 
-    // Match high-DPI device pixel ratio for crystal clear, non-blurry rendering
-    viewer.resolutionScale = window.devicePixelRatio || 1.0;
+    // Clamp high-DPI device pixel ratio to 1.25 max to prevent fillrate choke on 4K/Retina displays
+    viewer.resolutionScale = Math.min(window.devicePixelRatio || 1.0, 1.25);
 
     // Disable FXAA post-processing filter which blurs/smears rasterized text glyphs
     if (viewer.scene.postProcessStages?.fxaa) {
       viewer.scene.postProcessStages.fxaa.enabled = false;
     }
 
-    // Hardware multisampling for clean 3D geometry edges without blurring 2D billboard labels
+    // Hardware multisampling set to 2 for sharp geometry without overwhelming GPU
     if (viewer.scene.msaaSamples !== undefined) {
-      viewer.scene.msaaSamples = 4;
+      viewer.scene.msaaSamples = 2;
     }
 
     // Disable Earth's atmosphere on airless Moon (eliminates edge artifacts/fringing)
@@ -835,7 +837,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
     const resizeObserver = new ResizeObserver(() => {
       if (viewer && !viewer.isDestroyed()) {
-        viewer.resolutionScale = window.devicePixelRatio || 1.0;
+        viewer.resolutionScale = Math.min(window.devicePixelRatio || 1.0, 1.25);
         viewer.resize();
         viewer.scene.requestRender();
       }
@@ -1521,8 +1523,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     optimalCandidate,
   ]);
 
-  // High-Speed Auto-Spin Turntable Loop
+  // High-Speed Auto-Spin Turntable Loop (only runs RAF when autoSpin is true)
   useEffect(() => {
+    if (!autoSpin) return;
+
     let animId: number;
     let lastTime = performance.now();
 
@@ -1530,7 +1534,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       const dt = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
 
-      if (autoSpin && !isInteractingRef.current) {
+      if (!isInteractingRef.current) {
         const radPerSec = spinSpeeds[spinSpeedIndex] || 0.55;
         const angle = -radPerSec * dt;
         const rotMat = Cesium.Matrix3.fromRotationZ(angle);

@@ -8,33 +8,35 @@ interface SkyPlotProps {
   siteName: string;
 }
 
-export const SkyPlot: React.FC<SkyPlotProps> = ({
+export const SkyPlot: React.FC<SkyPlotProps> = React.memo(({
   currentPoint,
   allPoints,
   siteName,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Pre-render static dome background, grid spokes, and trajectories into an offscreen canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const size = 340;
+    if (!bgCanvasRef.current) {
+      bgCanvasRef.current = document.createElement('canvas');
+      bgCanvasRef.current.width = size;
+      bgCanvasRef.current.height = size;
+    }
+    const bg = bgCanvasRef.current;
+    const ctx = bg.getContext('2d');
     if (!ctx) return;
 
-    const size = canvas.width;
     const cx = size / 2;
     const cy = size / 2;
     const maxRadius = cx - 28;
 
     ctx.clearRect(0, 0, size, size);
 
-    // Coordinate conversion:
-    // Elevation: 0° is outer rim (maxRadius), 90° is center (radius 0)
-    // Azimuth: 0° is North (top), 90° is East (right), 180° is South (bottom), 270° is West (left)
     const topoToXY = (elDeg: number, azDeg: number) => {
       const clampedEl = Math.max(-10, Math.min(90, elDeg));
       const r = maxRadius * (1 - clampedEl / 90);
-      // North is -Y, East is +X -> angle from +X axis clockwise is (azDeg - 90)
       const rad = ((azDeg - 90) * Math.PI) / 180;
       return {
         x: cx + r * Math.cos(rad),
@@ -106,7 +108,6 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
       ctx.lineWidth = card.az % 90 === 0 ? 1.5 : 1;
       ctx.stroke();
 
-      // Label outside the circle
       const labelDist = maxRadius + 14;
       const lx = cx + labelDist * Math.cos(rad);
       const ly = cy + labelDist * Math.sin(rad);
@@ -151,11 +152,41 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
       }
       ctx.stroke();
     }
+  }, [allPoints, siteName]);
 
-    // 6. Draw Sun Marker
+  // Fast 60 FPS live scrub blit
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const size = canvas.width;
+    const cx = size / 2;
+    const cy = size / 2;
+    const maxRadius = cx - 28;
+
+    ctx.clearRect(0, 0, size, size);
+
+    // Draw pre-rendered background in O(1)
+    if (bgCanvasRef.current) {
+      ctx.drawImage(bgCanvasRef.current, 0, 0);
+    }
+
+    const topoToXY = (elDeg: number, azDeg: number) => {
+      const clampedEl = Math.max(-10, Math.min(90, elDeg));
+      const r = maxRadius * (1 - clampedEl / 90);
+      const rad = ((azDeg - 90) * Math.PI) / 180;
+      return {
+        x: cx + r * Math.cos(rad),
+        y: cy + r * Math.sin(rad),
+        r,
+      };
+    };
+
+    // 6. Draw Live Sun Marker
     const sunPos = topoToXY(currentPoint.sun.elevationDeg, currentPoint.sun.azimuthDeg);
 
-    // Sun Radial Glow
     const sunGlow = ctx.createRadialGradient(sunPos.x, sunPos.y, 2, sunPos.x, sunPos.y, 18);
     sunGlow.addColorStop(0, 'rgba(254, 240, 138, 0.95)');
     sunGlow.addColorStop(0.4, 'rgba(245, 158, 11, 0.6)');
@@ -165,13 +196,12 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
     ctx.arc(sunPos.x, sunPos.y, 18, 0, Math.PI * 2);
     ctx.fill();
 
-    // Sun Disc
     ctx.fillStyle = '#fffbeb';
     ctx.beginPath();
     ctx.arc(sunPos.x, sunPos.y, 5.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // 7. Draw Earth Marker
+    // 7. Draw Live Earth Marker
     const earthPos = topoToXY(currentPoint.earth.elevationDeg, currentPoint.earth.azimuthDeg);
 
     const earthGlow = ctx.createRadialGradient(earthPos.x, earthPos.y, 2, earthPos.x, earthPos.y, 16);
@@ -192,7 +222,7 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
     ctx.beginPath();
     ctx.arc(earthPos.x - 1.5, earthPos.y - 1.5, 2, 0, Math.PI * 2);
     ctx.fill();
-  }, [currentPoint, allPoints]);
+  }, [currentPoint]);
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/60 bg-space-900/90 shadow-2xl p-3 flex flex-col items-center">
@@ -241,5 +271,5 @@ export const SkyPlot: React.FC<SkyPlotProps> = ({
       </div>
     </div>
   );
-};
+});
 

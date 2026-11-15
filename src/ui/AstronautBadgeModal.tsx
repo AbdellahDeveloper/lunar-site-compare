@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
 import {
   Sparkles,
   Download,
@@ -50,6 +49,7 @@ export const AstronautBadgeModal: React.FC<AstronautBadgeModalProps> = ({
     if (!badgeCardRef.current) return;
     setIsDownloading(true);
     try {
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(badgeCardRef.current, {
         backgroundColor: '#020617',
         scale: 2,

@@ -12,7 +12,7 @@ interface RoiDrawingHudProps {
   onCancel: () => void;
 }
 
-export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
+export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = React.memo(({
   pointsCount,
   isOptimizing,
   uiMode = 'detailed',
@@ -98,5 +98,5 @@ export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
       </div>
     </div>
   );
-};
+});
 

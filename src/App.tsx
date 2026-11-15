@@ -330,13 +330,27 @@ export const App: React.FC = () => {
     };
   }, [siteB, maskB, currentBodyVecs, currentScrubMs]);
 
-  // Monte Carlo Assessment for Site A (calibrated against real LOLA terrain mask)
+  // Monte Carlo Assessment for Site A: lazy computed only when in detailed view & monte-carlo tool active
   const monteCarloA = useMemo(() => {
-    return runMonteCarloAssessment(siteA, scenarioConfigA, windowStartMs, windowEndMs, 120, maskA);
-  }, [siteA, scenarioConfigA, windowStartMs, windowEndMs, maskA]);
+    if (uiMode !== 'detailed' || activeTool !== 'monte-carlo') {
+      return {
+        trialsCount: 0,
+        successProbability: 85,
+        dteProbability: 95,
+        avgSunlightHours: 320,
+        avgDarkHours: 18,
+        maxConsecutiveDarkHours: 24,
+        darknessHistogram: [],
+        riskRating: 'Low' as const,
+        recommendation: 'Terrain safe. Nominal illumination.',
+      };
+    }
+    return runMonteCarloAssessment(siteA, scenarioConfigA, windowStartMs, windowEndMs, 100, maskA);
+  }, [siteA, scenarioConfigA, windowStartMs, windowEndMs, maskA, uiMode, activeTool]);
 
-  // Slip analysis for Site A
+  // Slip analysis for Site A: lazy computed on-demand only when slip modal is opened
   const slipCasesA = useMemo(() => {
+    if (!showSlipModal) return [];
     return computeSlipAnalysis(
       scenarioConfigA,
       siteA.lat,
@@ -346,7 +360,7 @@ export const App: React.FC = () => {
       windowStartMs,
       windowEndMs
     );
-  }, [scenarioConfigA, siteA, maskA, windowStartMs, windowEndMs]);
+  }, [showSlipModal, scenarioConfigA, siteA, maskA, windowStartMs, windowEndMs]);
 
   // Alternatives search for Site A
   const alternativeCandidates = useMemo(() => {

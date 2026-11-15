@@ -13,4 +13,16 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-resizable-panels'],
+          'astronomy': ['astronomy-engine'],
+          'icons': ['lucide-react'],
+        },
+      },
+    },
+  },
 });

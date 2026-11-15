@@ -195,7 +195,7 @@ interface TopToolRibbonProps {
   uiMode?: UIMode;
 }
 
-export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
+export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
   activeTool,
   onSelectTool,
   showGraticule = true,
@@ -345,5 +345,5 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
       </Button>
     </div>
   );
-};
+});
 

@@ -1,6 +1,6 @@
 import { HorizonMask, MonteCarloResult, ScenarioConfig, Site } from '../types';
-import { bodyVectors } from './moon';
-import { createLocalFrame, computeTopocentric } from './local';
+import { getCachedCelestialVectors } from './series';
+import { createLocalFrame } from './local';
 import { evaluateVisibilityAtInstant } from './visibility';
 
 /**
@@ -10,6 +10,7 @@ import { evaluateVisibilityAtInstant } from './visibility';
  * 3. LOLA DEM vertical uncertainty: Delta z ~ Normal(0, elevationUncertaintyM) (RMS ~0.35m)
  *
  * Evaluates thermal survival risk (consecutive dark hours) and DTE continuity probability using real LOLA horizon mask.
+ * Optimizations: Precomputes and caches celestial vectors across window + margin for O(1) vector lookups.
  */
 export function runMonteCarloAssessment(
   site: Site,
@@ -22,6 +23,14 @@ export function runMonteCarloAssessment(
   const windowDurationHours = (windowEndMs - windowStartMs) / (3600 * 1000);
   const sampleSteps = Math.min(48, Math.max(24, Math.floor(windowDurationHours / 2))); // 2-hour samples
   const stepMs = (windowEndMs - windowStartMs) / sampleSteps;
+
+  // Pre-fetch celestial body vectors across window +/- 24h margin at 1-hour resolution
+  // Eliminates 5,760 repeated astronomical coordinate transforms
+  const marginMs = 24 * 3600 * 1000;
+  const baseT = windowStartMs - marginMs;
+  const endT = windowEndMs + marginMs;
+  const cached = getCachedCelestialVectors(baseT, endT, 3600 * 1000);
+  const maxIdx = cached.sunVecs.length - 1;
 
   let successfulSunTrials = 0;
   let successfulDteTrials = 0;
@@ -64,7 +73,9 @@ export function runMonteCarloAssessment(
 
     for (let s = 0; s <= sampleSteps; s++) {
       const t = windowStartMs + timeShiftMs + s * stepMs;
-      const { sun, earth } = bodyVectors(t);
+      const idx = Math.max(0, Math.min(maxIdx, Math.round((t - baseT) / (3600 * 1000))));
+      const sun = cached.sunVecs[idx];
+      const earth = cached.earthVecs[idx];
 
       // Evaluate against the site's authentic NASA LOLA horizon mask!
       const vis = evaluateVisibilityAtInstant(sun, earth, frame, mask, perturbedElev);
