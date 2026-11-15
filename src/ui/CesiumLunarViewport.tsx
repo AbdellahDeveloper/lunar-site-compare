@@ -6,7 +6,7 @@ import {
   Site,
   Vector3D,
 } from '../types';
-import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle, Orbit } from 'lucide-react';
+import { Eye, Compass, Sun, Radio, Maximize2, Zap, Layers, Sparkles, Plus, Minus, RotateCcw, RotateCw, HelpCircle, Orbit, Crosshair, MapPin } from 'lucide-react';
 import { Button, Badge } from '@/components/ui';
 import { ShortcutsModal } from './ShortcutsModal';
 
@@ -158,6 +158,13 @@ function createPointLightCanvas(mode: 'dual' | 'sun' | 'earth' | 'dormant'): HTM
   return canvas;
 }
 
+// Calculate exact selenocentric altitude above the Moon surface (Moon radius = 1,737,400 m)
+function getMoonCameraAltitude(camera: Cesium.Camera): number {
+  if (!camera || !camera.position) return 1000000;
+  const dist = Cesium.Cartesian3.magnitude(camera.position);
+  return Math.max(0, dist - 1737400.0);
+}
+
 export interface CesiumViewportHandle {
   flyToSouthPole: () => void;
   flyToSiteA: () => void;
@@ -167,10 +174,11 @@ export interface CesiumViewportHandle {
   handleFitMoon: () => void;
   handleZoomIn: () => void;
   handleZoomOut: () => void;
+  flyToCoordinates: (lat: number, lon: number, heightKm?: number) => void;
 }
 
 export interface CesiumLunarViewportProps {
-  viewMode: ComparisonViewMode;
+  viewMode?: ComparisonViewMode;
   siteA: Site;
   siteB?: Site;
   currentPointA: EphemerisPoint;
@@ -183,12 +191,23 @@ export interface CesiumLunarViewportProps {
   showSightlines: boolean;
   showSunOrbit: boolean;
   showEarthOrbit: boolean;
+  showSunHighlight?: boolean;
+  showEarthHighlight?: boolean;
+  showIceOverlay?: boolean;
+  showRockOverlay?: boolean;
+  showSlopeOverlay?: boolean;
+  isPickingLocation?: boolean;
+  onPickSurfaceCoords?: (lat: number, lon: number) => void;
+  onStartPickLocation?: () => void;
+  onCancelPickLocation?: () => void;
+  pendingPickCoords?: { lat: number; lon: number } | null;
   autoSpin: boolean;
   spinSpeedIndex: number;
+  showGraticule?: boolean;
+  allSites?: Site[];
 }
 
 export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarViewportProps>(({
-  viewMode,
   siteA,
   siteB,
   currentPointA,
@@ -201,14 +220,35 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   showSightlines,
   showSunOrbit,
   showEarthOrbit,
+  showSunHighlight = true,
+  showEarthHighlight = true,
+  showIceOverlay = false,
+  showRockOverlay = false,
+  showSlopeOverlay = false,
+  isPickingLocation = false,
+  onPickSurfaceCoords,
+  onStartPickLocation,
+  onCancelPickLocation,
+  pendingPickCoords,
   autoSpin,
   spinSpeedIndex,
+  showGraticule = true,
+  allSites,
 }, ref) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const containerBRef = useRef<HTMLDivElement | null>(null);
-
   const viewerARef = useRef<Cesium.Viewer | null>(null);
-  const viewerBRef = useRef<Cesium.Viewer | null>(null);
+
+  // 3D Location Picker reactive refs
+  const isPickingLocationRef = useRef<boolean>(isPickingLocation);
+  isPickingLocationRef.current = isPickingLocation;
+  const onPickSurfaceCoordsRef = useRef(onPickSurfaceCoords);
+  onPickSurfaceCoordsRef.current = onPickSurfaceCoords;
+
+  useEffect(() => {
+    isPickingLocationRef.current = isPickingLocation;
+    const canvasA = viewerARef.current?.canvas;
+    if (canvasA) canvasA.style.cursor = isPickingLocation ? 'crosshair' : '';
+  }, [isPickingLocation]);
 
   // Live Camera Altitude state
   const [altitudeKm, setAltitudeKm] = useState<number>(850);
@@ -245,14 +285,22 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   const createCesiumMoonViewer = (
     container: HTMLDivElement,
     primarySite: Site,
-    secondarySite?: Site
+    secondarySite?: Site,
+    isViewerA: boolean = true
   ): Cesium.Viewer => {
+    // Set global default ellipsoid to the Moon so all internal Cesium occluders,
+    // camera frustums, horizon culling, and math scale to the Moon instead of Earth (WGS84)
+    Cesium.Ellipsoid.default = Cesium.Ellipsoid.MOON;
+
     // Disable default Ion token requirement for public lunar basemaps
     Cesium.Ion.defaultAccessToken = '';
 
     const viewer = new Cesium.Viewer(container, {
+      ellipsoid: Cesium.Ellipsoid.MOON,
       globe: new Cesium.Globe(Cesium.Ellipsoid.MOON),
       mapProjection: new Cesium.GeographicProjection(Cesium.Ellipsoid.MOON),
+      skyAtmosphere: false,
+      useBrowserRecommendedResolution: false,
       baseLayerPicker: false,
       geocoder: false,
       homeButton: false,
@@ -265,11 +313,40 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       fullscreenButton: false,
       vrButton: false,
       shouldAnimate: false,
+      contextOptions: {
+        webgl: {
+          alpha: false,
+          antialias: true,
+          preserveDrawingBuffer: true,
+        },
+      },
     });
 
-    viewer.scene.globe.enableLighting = true;
+    // Match high-DPI device pixel ratio for crystal clear, non-blurry rendering
+    viewer.resolutionScale = window.devicePixelRatio || 1.0;
+
+    // Disable FXAA post-processing filter which blurs/smears rasterized text glyphs
+    if (viewer.scene.postProcessStages?.fxaa) {
+      viewer.scene.postProcessStages.fxaa.enabled = false;
+    }
+
+    // Hardware multisampling for clean 3D geometry edges without blurring 2D billboard labels
+    if (viewer.scene.msaaSamples !== undefined) {
+      viewer.scene.msaaSamples = 4;
+    }
+
+    // Disable Earth's atmosphere on airless Moon (eliminates edge artifacts/fringing)
+    viewer.scene.globe.showGroundAtmosphere = false;
+    if (viewer.scene.skyAtmosphere) {
+      viewer.scene.skyAtmosphere.show = false;
+    }
+
+    // High contrast space rendering & near plane tuning to prevent close-up clipping
+    viewer.scene.globe.enableLighting = false;
+    viewer.scene.globe.depthTestAgainstTerrain = false;
     viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#242b38');
     viewer.scene.backgroundColor = Cesium.Color.fromCssColorString('#05070d');
+    viewer.scene.camera.frustum.near = 0.1;
 
     // Disable legacy Cesium GIS camera controller inputs to avoid deadzones and stuck rotation
     const ssc = viewer.scene.screenSpaceCameraController;
@@ -296,6 +373,9 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     let dragMode: 'orbit' | 'zoom' | 'pan' = 'orbit';
     let lastX = 0;
     let lastY = 0;
+    let pointerStartX = 0;
+    let pointerStartY = 0;
+    let pointerStartTime = 0;
     let activePointerId = -1;
     let velX = 0;
     let velY = 0;
@@ -320,15 +400,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
       const camera = viewer.scene.camera;
       if (dragMode === 'pan') {
-        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const currentHeight = Math.max(500, getMoonCameraAltitude(camera));
         const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 0.25;
         if (velX > 0) camera.moveLeft(velX * panSpeed);
         else if (velX < 0) camera.moveRight(-velX * panSpeed);
         if (velY > 0) camera.moveUp(velY * panSpeed);
         else if (velY < 0) camera.moveDown(-velY * panSpeed);
       } else {
-        camera.rotate(camera.up, -velX * 0.035);
-        camera.rotate(camera.right, -velY * 0.035);
+        camera.rotate(camera.up, velX * 0.035);
+        camera.rotate(camera.right, velY * 0.035);
       }
       viewer.scene.requestRender();
 
@@ -348,6 +428,9 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       isDragging = true;
       lastX = e.clientX;
       lastY = e.clientY;
+      pointerStartX = e.clientX;
+      pointerStartY = e.clientY;
+      pointerStartTime = performance.now();
       activePointerId = e.pointerId;
       const isPan = e.shiftKey || e.button === 1;
       dragMode = isPan ? 'pan' : e.button === 2 ? 'zoom' : 'orbit';
@@ -386,7 +469,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
       if (isPan) {
         // Shift + Drag Pan Move across the lunar surface
-        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const currentHeight = Math.max(500, getMoonCameraAltitude(camera));
         const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 1.15;
 
         if (dx > 0) camera.moveLeft(dx * panSpeed);
@@ -397,11 +480,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
         canvas.style.cursor = 'grabbing';
       } else if (dragMode === 'zoom') {
-        // Right-drag zoom
-        const currentHeight = camera.positionCartographic?.height || 1000000;
+        // Right-drag zoom with minimum altitude clamp (prevents surface penetration)
+        const currentHeight = Math.max(500, getMoonCameraAltitude(camera));
         const zoomDelta = -dy * 0.004;
         if (zoomDelta > 0) {
-          camera.zoomIn(Math.max(300, currentHeight * Math.min(0.25, zoomDelta)));
+          if (currentHeight > 350) {
+            const maxMove = Math.max(0, currentHeight - 300);
+            const moveAmount = Math.min(maxMove, Math.max(100, currentHeight * Math.min(0.25, zoomDelta)));
+            if (moveAmount > 0) camera.zoomIn(moveAmount);
+          }
         } else {
           camera.zoomOut(Math.max(500, currentHeight * Math.min(0.25, -zoomDelta)));
         }
@@ -409,8 +496,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         // Left-drag / single-touch trackball orbit around the Moon
         // Immediate response on even 1-pixel movement
         const sensitivity = 0.0035;
-        const angleH = -dx * sensitivity;
-        const angleV = -dy * sensitivity;
+        const angleH = dx * sensitivity;
+        const angleV = dy * sensitivity;
 
         if (Math.abs(angleH) > 0.000001) {
           camera.rotate(camera.up, angleH);
@@ -430,7 +517,28 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           canvas.releasePointerCapture(e.pointerId);
         } catch {}
 
-        canvas.style.cursor = e.shiftKey ? 'grab' : '';
+        canvas.style.cursor = isPickingLocationRef.current ? 'crosshair' : e.shiftKey ? 'grab' : '';
+
+        const clickDist = Math.hypot(e.clientX - pointerStartX, e.clientY - pointerStartY);
+        const clickDuration = performance.now() - pointerStartTime;
+
+        // If in 3D Location Pick Mode and user clicked cleanly on the 3D Moon:
+        if (isPickingLocationRef.current && clickDist < 8 && clickDuration < 600 && e.button === 0) {
+          const rect = canvas.getBoundingClientRect();
+          const mousePos = new Cesium.Cartesian2(e.clientX - rect.left, e.clientY - rect.top);
+          const ray = viewer.camera.getPickRay(mousePos);
+          if (ray) {
+            const intersection = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.MOON);
+            if (intersection && intersection.start > 0) {
+              const targetPoint = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
+              const carto = Cesium.Cartographic.fromCartesian(targetPoint, Cesium.Ellipsoid.MOON);
+              const lon = Cesium.Math.toDegrees(carto.longitude);
+              const lat = Cesium.Math.toDegrees(carto.latitude);
+              onPickSurfaceCoordsRef.current?.(lat, lon);
+              return;
+            }
+          }
+        }
 
         // Launch smooth glide if released with motion
         if ((dragMode === 'orbit' || dragMode === 'pan') && Math.hypot(velX, velY) > 0.06) {
@@ -438,61 +546,6 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         }
       }
     };
-
-    // Hover Pan Move for Shift + Mouse Move (trackpad & mouse navigation)
-    let hoverLastX = 0;
-    let hoverLastY = 0;
-
-    const handleHoverMove = (e: MouseEvent) => {
-      if (isDragging) return;
-      if (e.shiftKey) {
-        canvas.style.cursor = 'grab';
-        const hdx = e.clientX - hoverLastX;
-        const hdy = e.clientY - hoverLastY;
-        hoverLastX = e.clientX;
-        hoverLastY = e.clientY;
-
-        // If mouse is moving while Shift is held down: pan camera
-        if (Math.abs(hdx) > 0 || Math.abs(hdy) > 0) {
-          notifyInteraction();
-          const camera = viewer.scene.camera;
-          const currentHeight = camera.positionCartographic?.height || 1000000;
-          const panSpeed = (currentHeight / (canvas.clientHeight || 800)) * 1.15;
-
-          if (hdx > 0) camera.moveLeft(hdx * panSpeed);
-          else if (hdx < 0) camera.moveRight(-hdx * panSpeed);
-
-          if (hdy > 0) camera.moveUp(hdy * panSpeed);
-          else if (hdy < 0) camera.moveDown(-hdy * panSpeed);
-
-          viewer.scene.requestRender();
-        }
-      } else {
-        hoverLastX = e.clientX;
-        hoverLastY = e.clientY;
-        if (canvas.style.cursor === 'grab') {
-          canvas.style.cursor = '';
-        }
-      }
-    };
-
-    const handleMouseLeave = () => {
-      if (canvas.style.cursor === 'grab') {
-        canvas.style.cursor = '';
-      }
-    };
-
-    const handleShiftKey = (e: KeyboardEvent) => {
-      if (e.key === 'Shift') {
-        if (e.type === 'keydown') {
-          canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
-        } else {
-          canvas.style.cursor = '';
-        }
-      }
-    };
-    window.addEventListener('keydown', handleShiftKey);
-    window.addEventListener('keyup', handleShiftKey);
 
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -528,23 +581,28 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         }
       }
 
-      const currentHeight = camera.positionCartographic?.height || 1000000;
+      const currentHeight = getMoonCameraAltitude(camera);
 
       if (targetPoint && factor < 1.0) {
         // Zooming IN directly toward the crater or surface feature under the cursor
-        const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
-        const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
-        if (currentHeight > 400) {
-          const moveDistance = distanceToTarget * (1.0 - factor);
-          Cesium.Cartesian3.normalize(toTarget, toTarget);
-          camera.move(toTarget, moveDistance);
+        // Enforce safe minimum altitude (300m) so camera never plunges inside the Moon
+        if (currentHeight > 350) {
+          const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
+          const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
+          const maxMove = Math.max(0, distanceToTarget - 300);
+          const moveDistance = Math.min(maxMove, distanceToTarget * (1.0 - factor));
+          if (moveDistance > 0.1) {
+            Cesium.Cartesian3.normalize(toTarget, toTarget);
+            camera.move(toTarget, moveDistance);
+          }
         }
       } else {
         // Zooming OUT, or zooming when cursor is in space around the Moon
         if (factor < 1.0) {
-          if (currentHeight > 400) {
-            const moveAmount = Math.max(250, currentHeight * (1.0 - factor));
-            camera.zoomIn(moveAmount);
+          if (currentHeight > 350) {
+            const maxMove = Math.max(0, currentHeight - 300);
+            const moveAmount = Math.min(maxMove, Math.max(100, currentHeight * (1.0 - factor)));
+            if (moveAmount > 0.1) camera.zoomIn(moveAmount);
           }
         } else {
           if (currentHeight < 55000000) {
@@ -614,22 +672,26 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         }
 
         const factor = 1 / scale;
-        const currentHeight = camera.positionCartographic?.height || 1000000;
+        const currentHeight = getMoonCameraAltitude(camera);
 
         if (targetPoint && factor < 1.0) {
           // Pinching outward: Zoom in toward the crater/feature between the two fingers
-          const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
-          const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
-          if (currentHeight > 400) {
-            const moveDistance = distanceToTarget * (1.0 - factor);
-            Cesium.Cartesian3.normalize(toTarget, toTarget);
-            camera.move(toTarget, moveDistance);
+          if (currentHeight > 350) {
+            const toTarget = Cesium.Cartesian3.subtract(targetPoint, camera.position, new Cesium.Cartesian3());
+            const distanceToTarget = Cesium.Cartesian3.magnitude(toTarget);
+            const maxMove = Math.max(0, distanceToTarget - 300);
+            const moveDistance = Math.min(maxMove, distanceToTarget * (1.0 - factor));
+            if (moveDistance > 0.1) {
+              Cesium.Cartesian3.normalize(toTarget, toTarget);
+              camera.move(toTarget, moveDistance);
+            }
           }
         } else {
           if (factor < 1.0) {
-            if (currentHeight > 400) {
-              const moveAmount = Math.max(250, currentHeight * (1.0 - factor));
-              camera.zoomIn(moveAmount);
+            if (currentHeight > 350) {
+              const maxMove = Math.max(0, currentHeight - 300);
+              const moveAmount = Math.min(maxMove, Math.max(100, currentHeight * (1.0 - factor)));
+              if (moveAmount > 0.1) camera.zoomIn(moveAmount);
             }
           } else {
             if (currentHeight < 55000000) {
@@ -661,11 +723,13 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         if (intersection && intersection.start > 0) {
           const target = Cesium.Ray.getPoint(ray, intersection.start, new Cesium.Cartesian3());
           const carto = Cesium.Cartographic.fromCartesian(target, Cesium.Ellipsoid.MOON);
+          const currentAlt = getMoonCameraAltitude(viewer.camera);
+          const targetAlt = Math.max(1500, currentAlt * 0.35);
           viewer.camera.flyTo({
             destination: Cesium.Cartesian3.fromRadians(
               carto.longitude,
               carto.latitude,
-              Math.max(25000, (viewer.camera.positionCartographic?.height || 500000) * 0.35),
+              targetAlt,
               Cesium.Ellipsoid.MOON
             ),
             duration: 1.0,
@@ -686,18 +750,14 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     canvas.addEventListener('touchend', handleTouchEnd, { passive: true });
     canvas.addEventListener('touchcancel', handleTouchEnd, { passive: true });
     canvas.addEventListener('dblclick', handleDoubleClick);
-    canvas.addEventListener('mousemove', handleHoverMove);
-    canvas.addEventListener('mouseleave', handleMouseLeave);
 
-    // Listen to camera movements to update altitude HUD
+    // Listen to camera movements to update altitude HUD accurately
     viewer.camera.changed.addEventListener(() => {
-      const carto = viewer.camera.positionCartographic;
-      if (carto) {
-        setAltitudeKm(Math.max(1, Math.round(carto.height / 1000)));
-      }
+      const altMeters = getMoonCameraAltitude(viewer.camera);
+      setAltitudeKm(Math.max(0.1, Math.round((altMeters / 1000) * 10) / 10));
     });
 
-    // Add High-Resolution LROC Global Moon Imagery
+    // Add Clean High-Resolution Lunar Basemap (Cesium standard OpenPlanetaryMap Moon mosaic)
     try {
       const moonImagery = new Cesium.UrlTemplateImageryProvider({
         url: 'https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-moon-basemap-v0-1/all/{z}/{x}/{y}.png',
@@ -708,6 +768,14 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     } catch {
       // Fallback to base color if network blocked
     }
+
+    const removePreRender = () => {};
+
+    const originalDestroy = viewer.destroy.bind(viewer);
+    viewer.destroy = function () {
+      removePreRender();
+      return originalDestroy();
+    };
 
     // Initial Camera View: South Pole
     viewer.camera.flyTo({
@@ -728,36 +796,24 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     const el = containerRef.current;
     if (!el) return;
 
-    const viewer = createCesiumMoonViewer(el, siteA, siteB);
+    const viewer = createCesiumMoonViewer(el, siteA, siteB, true);
     viewerARef.current = viewer;
 
+    const resizeObserver = new ResizeObserver(() => {
+      if (viewer && !viewer.isDestroyed()) {
+        viewer.resolutionScale = window.devicePixelRatio || 1.0;
+        viewer.resize();
+        viewer.scene.requestRender();
+      }
+    });
+    resizeObserver.observe(el);
+
     return () => {
+      resizeObserver.disconnect();
       viewer.destroy();
       viewerARef.current = null;
     };
   }, []);
-
-  // Mount Viewport B if in Split View
-  useEffect(() => {
-    if (viewMode !== 'split') {
-      if (viewerBRef.current) {
-        viewerBRef.current.destroy();
-        viewerBRef.current = null;
-      }
-      return;
-    }
-
-    const el = containerBRef.current;
-    if (!el || !siteB) return;
-
-    const viewer = createCesiumMoonViewer(el, siteB, siteA);
-    viewerBRef.current = viewer;
-
-    return () => {
-      viewer.destroy();
-      viewerBRef.current = null;
-    };
-  }, [viewMode]);
 
   // Keep sunPosRef, earthPosRef, and directional sunlight in sync at 60fps
   useEffect(() => {
@@ -780,19 +836,13 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     };
 
     updateLight(viewerARef.current);
-    if (viewMode === 'split') {
-      updateLight(viewerBRef.current);
-    }
-  }, [sunVec, earthVec, viewMode]);
+  }, [sunVec, earthVec]);
 
   // Keep point light states and directional swaths reactive at 60fps
   useEffect(() => {
     currentPointARef.current = currentPointA;
     currentPointBRef.current = currentPointB;
     viewerARef.current?.scene.requestRender();
-    if (viewerBRef.current) {
-      viewerBRef.current.scene.requestRender();
-    }
   }, [currentPointA, currentPointB, currentTimeMs]);
 
   // Update Entities (Sun Model, Earth Model, Site Pins, Laser Sightlines, Trajectories)
@@ -807,13 +857,50 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
     const moon = Cesium.Ellipsoid.MOON;
 
-    // Site A Landing Pin Position
+    // Site A Landing Pin Position (Snug on the visible lunar surface at +25m)
     const siteAPos = Cesium.Cartesian3.fromDegrees(
       primarySite.lon,
       primarySite.lat,
-      primarySite.elevKm * 1000,
+      25.0,
       moon
     );
+
+    // 0. Selected Target Candidate Pinpoint (Dropped in 3D Pick Mode)
+    if (pendingPickCoords) {
+      viewer.entities.add({
+        id: 'candidate_pin',
+        name: 'Selected Target Location',
+        position: Cesium.Cartesian3.fromDegrees(
+          pendingPickCoords.lon,
+          pendingPickCoords.lat,
+          25.0,
+          moon
+        ),
+        point: {
+          pixelSize: 14,
+          color: Cesium.Color.fromCssColorString('#06b6d4'),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 3,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: `📍 SELECTED TARGET\n${Math.abs(pendingPickCoords.lat).toFixed(3)}°${pendingPickCoords.lat < 0 ? 'S' : 'N'}, ${Math.abs(pendingPickCoords.lon).toFixed(3)}°${pendingPickCoords.lon >= 0 ? 'E' : 'W'}`,
+          font: 'bold 22px "JetBrains Mono", monospace',
+          scale: 0.5,
+          fillColor: Cesium.Color.fromCssColorString('#22d3ee'),
+          outlineColor: Cesium.Color.fromCssColorString('#020617'),
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(0, -28),
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.9)'),
+          backgroundPadding: new Cesium.Cartesian2(12, 6),
+          showBackground: true,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    }
 
     // 1. Dynamic 3D Sun Model (Sphere + Radiant Corona Billboard + Core Point + Label)
     // Using CallbackPositionProperty ensures all 4 representations move in exact lockstep
@@ -842,11 +929,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
       label: {
         text: 'SUN',
-        font: 'bold 12px "JetBrains Mono", monospace',
+        font: 'bold 22px "JetBrains Mono", monospace',
+        scale: 0.5,
         fillColor: Cesium.Color.fromCssColorString('#fef08a'),
         outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 2,
+        outlineWidth: 3,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.85)'),
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
         pixelOffset: new Cesium.Cartesian2(0, -48),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
@@ -878,78 +969,24 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
       label: {
         text: 'EARTH',
-        font: 'bold 12px "JetBrains Mono", monospace',
+        font: 'bold 22px "JetBrains Mono", monospace',
+        scale: 0.5,
         fillColor: Cesium.Color.fromCssColorString('#38bdf8'),
         outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 2,
+        outlineWidth: 3,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.85)'),
+        backgroundPadding: new Cesium.Cartesian2(10, 5),
         pixelOffset: new Cesium.Cartesian2(0, -40),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     });
 
-    // 3. Site A: Dynamic Physical Lights on the Moon (Replacing static point marker)
+    // 3. Site A: Dynamic Physical Lights on the Moon
+    // (Global sun/earth/overlap envelopes are rendered by the mission-highlights ellipsoid primitive)
 
-    // 3a. Directional Solar Illumination Light Swath (Represents where sunlight is falling)
-    viewer.entities.add({
-      id: 'site_a_sun_light_swath',
-      name: `${siteA.name} Solar Illumination`,
-      position: siteAPos,
-      ellipse: {
-        semiMajorAxis: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt || !pt.sun.isVisible) return 0.1;
-          const elev = Math.max(0.5, pt.sun.elevationDeg);
-          // Low grazing sunlight casts long grazing swaths across ridges
-          const grazingStretch = Math.min(38000, 16000 / Math.tan(Cesium.Math.toRadians(Math.max(0.8, elev))));
-          return Math.max(14000, grazingStretch);
-        }, false),
-        semiMinorAxis: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt || !pt.sun.isVisible) return 0.1;
-          return 7500;
-        }, false),
-        rotation: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt) return 0;
-          return Cesium.Math.toRadians(360 - pt.sun.azimuthDeg);
-        }, false),
-        material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.42)'),
-        outline: true,
-        outlineColor: Cesium.Color.fromCssColorString('#f59e0b'),
-        outlineWidth: 1.5,
-      },
-    });
-
-    // 3b. Directional Direct-to-Earth Comm Light Swath (Represents direct comm corridor)
-    viewer.entities.add({
-      id: 'site_a_earth_comm_swath',
-      name: `${siteA.name} Earth Direct Link`,
-      position: siteAPos,
-      ellipse: {
-        semiMajorAxis: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt || !pt.earth.isVisible) return 0.1;
-          return 26000;
-        }, false),
-        semiMinorAxis: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt || !pt.earth.isVisible) return 0.1;
-          return 9000;
-        }, false),
-        rotation: new Cesium.CallbackProperty(() => {
-          const pt = currentPointARef.current;
-          if (!pt) return 0;
-          return Cesium.Math.toRadians(360 - pt.earth.azimuthDeg);
-        }, false),
-        material: Cesium.Color.fromCssColorString('rgba(34, 211, 238, 0.40)'),
-        outline: true,
-        outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
-        outlineWidth: 1.5,
-      },
-    });
-
-    // 3c. Site A Point Light Beacon (Glowing Physical Light Source on the Surface)
+    // 3a. Site A Point Light Beacon (Glowing Physical Light Source on the Surface)
     viewer.entities.add({
       id: 'site_a_pin',
       name: siteA.name,
@@ -1013,7 +1050,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           const earthTag = pt.earth.isVisible ? 'LINK' : 'OCC';
           return `${siteName} [${sunTag} | ${earthTag}]`;
         }, false),
-        font: 'bold 11px Inter, sans-serif',
+        font: 'bold 22px "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        scale: 0.5,
         fillColor: new Cesium.CallbackProperty(() => {
           const pt = currentPointARef.current;
           if (!pt) return Cesium.Color.fromCssColorString('#38bdf8');
@@ -1023,10 +1061,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           return Cesium.Color.fromCssColorString('#94a3b8');
         }, false),
         outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 2,
+        outlineWidth: 3,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.88)'),
+        backgroundPadding: new Cesium.Cartesian2(12, 6),
+        horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-        pixelOffset: new Cesium.Cartesian2(0, -20),
+        pixelOffset: new Cesium.Cartesian2(0, -22),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     });
 
@@ -1038,6 +1081,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         positions: new Cesium.CallbackProperty(() => [siteAPos, sunPosRef.current], false),
         width: new Cesium.CallbackProperty(() => (currentPointARef.current?.sun.isVisible ? 2.5 : 0.8), false),
         material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.3,
+          color: Cesium.Color.fromCssColorString('#f59e0b'),
+        }),
+        depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({
           glowPower: 0.3,
           color: Cesium.Color.fromCssColorString('#f59e0b'),
         }),
@@ -1054,6 +1101,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           glowPower: 0.3,
           color: Cesium.Color.fromCssColorString('#06b6d4'),
         }),
+        depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.3,
+          color: Cesium.Color.fromCssColorString('#06b6d4'),
+        }),
       },
     });
 
@@ -1063,69 +1114,11 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       const siteBPos = Cesium.Cartesian3.fromDegrees(
         siteBTarget.lon,
         siteBTarget.lat,
-        siteBTarget.elevKm * 1000,
+        25.0,
         moon
       );
 
-      // 5a. Site B Directional Solar Illumination Light Swath
-      viewer.entities.add({
-        id: 'site_b_sun_light_swath',
-        name: `${siteBTarget.name} Solar Illumination`,
-        position: siteBPos,
-        ellipse: {
-          semiMajorAxis: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt || !pt.sun.isVisible) return 0.1;
-            const elev = Math.max(0.5, pt.sun.elevationDeg);
-            const grazingStretch = Math.min(38000, 16000 / Math.tan(Cesium.Math.toRadians(Math.max(0.8, elev))));
-            return Math.max(14000, grazingStretch);
-          }, false),
-          semiMinorAxis: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt || !pt.sun.isVisible) return 0.1;
-            return 7500;
-          }, false),
-          rotation: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt) return 0;
-            return Cesium.Math.toRadians(360 - pt.sun.azimuthDeg);
-          }, false),
-          material: Cesium.Color.fromCssColorString('rgba(245, 158, 11, 0.42)'),
-          outline: true,
-          outlineColor: Cesium.Color.fromCssColorString('#f59e0b'),
-          outlineWidth: 1.5,
-        },
-      });
-
-      // 5b. Site B Directional Direct-to-Earth Comm Light Swath
-      viewer.entities.add({
-        id: 'site_b_earth_comm_swath',
-        name: `${siteBTarget.name} Earth Direct Link`,
-        position: siteBPos,
-        ellipse: {
-          semiMajorAxis: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt || !pt.earth.isVisible) return 0.1;
-            return 26000;
-          }, false),
-          semiMinorAxis: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt || !pt.earth.isVisible) return 0.1;
-            return 9000;
-          }, false),
-          rotation: new Cesium.CallbackProperty(() => {
-            const pt = currentPointBRef.current;
-            if (!pt) return 0;
-            return Cesium.Math.toRadians(360 - pt.earth.azimuthDeg);
-          }, false),
-          material: Cesium.Color.fromCssColorString('rgba(34, 211, 238, 0.40)'),
-          outline: true,
-          outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
-          outlineWidth: 1.5,
-        },
-      });
-
-      // 5c. Site B Point Light Beacon
+      // 5a. Site B Point Light Beacon
       viewer.entities.add({
         id: 'site_b_pin',
         name: siteBTarget.name,
@@ -1189,7 +1182,8 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
             const earthTag = pt.earth.isVisible ? 'LINK' : 'OCC';
             return `${siteName} [${sunTag} | ${earthTag}]`;
           }, false),
-          font: 'bold 11px Inter, sans-serif',
+          font: 'bold 22px "JetBrains Mono", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          scale: 0.5,
           fillColor: new Cesium.CallbackProperty(() => {
             const pt = currentPointBRef.current;
             if (!pt) return Cesium.Color.fromCssColorString('#f59e0b');
@@ -1199,10 +1193,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
             return Cesium.Color.fromCssColorString('#94a3b8');
           }, false),
           outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
+          outlineWidth: 3,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.88)'),
+          backgroundPadding: new Cesium.Cartesian2(12, 6),
+          horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          pixelOffset: new Cesium.Cartesian2(0, -20),
+          pixelOffset: new Cesium.Cartesian2(0, -22),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
       });
 
@@ -1217,6 +1216,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
             glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#f59e0b'),
           }),
+          depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.25,
+            color: Cesium.Color.fromCssColorString('#f59e0b'),
+          }),
         },
       });
 
@@ -1227,6 +1230,10 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
           positions: new Cesium.CallbackProperty(() => [siteBPos, earthPosRef.current], false),
           width: new Cesium.CallbackProperty(() => (currentPointBRef.current?.earth.isVisible ? 2.0 : 0.8), false),
           material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.25,
+            color: Cesium.Color.fromCssColorString('#06b6d4'),
+          }),
+          depthFailMaterial: new Cesium.PolylineGlowMaterialProperty({
             glowPower: 0.25,
             color: Cesium.Color.fromCssColorString('#06b6d4'),
           }),
@@ -1285,15 +1292,82 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       });
     }
 
+    // 7. Polar Graticule & Grid Overlay (Latitudinal circles & Longitudinal radials)
+    if (showGraticule) {
+      const lats = [-88, -85, -80, -75, -70, -60, -50];
+      for (const lat of lats) {
+        const ringPositions: Cesium.Cartesian3[] = [];
+        for (let deg = 0; deg <= 360; deg += 3) {
+          ringPositions.push(Cesium.Cartesian3.fromDegrees(deg, lat, 10.0, moon));
+        }
+        viewer.entities.add({
+          polyline: {
+            positions: ringPositions,
+            width: 1.0,
+            material: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.28)'),
+            depthFailMaterial: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.28)'),
+          },
+        });
+        viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(0, lat, 10.0, moon),
+          label: {
+            text: `${lat}°`,
+            font: 'bold 20px "JetBrains Mono", monospace',
+            scale: 0.5,
+            fillColor: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.85)'),
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            verticalOrigin: Cesium.VerticalOrigin.CENTER,
+            pixelOffset: new Cesium.Cartesian2(0, -6),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+        });
+      }
+
+      // Meridian radials (every 30 degrees)
+      const lons = [0, 30, 60, 90, 120, 150, 180, -150, -120, -90, -60, -30];
+      for (const lon of lons) {
+        const spokePositions: Cesium.Cartesian3[] = [];
+        for (let lat = -90; lat <= -50; lat += 2) {
+          spokePositions.push(Cesium.Cartesian3.fromDegrees(lon, lat, 10.0, moon));
+        }
+        viewer.entities.add({
+          polyline: {
+            positions: spokePositions,
+            width: 1.0,
+            material: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.22)'),
+            depthFailMaterial: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.22)'),
+          },
+        });
+        viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(lon, -62, 10.0, moon),
+          label: {
+            text: `${lon}°`,
+            font: 'bold 20px "JetBrains Mono", monospace',
+            scale: 0.5,
+            fillColor: Cesium.Color.fromCssColorString('rgba(255, 255, 255, 0.75)'),
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            verticalOrigin: Cesium.VerticalOrigin.CENTER,
+            pixelOffset: new Cesium.Cartesian2(0, 0),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+        });
+      }
+    }
+
+    // 8. Placemarks on Lunar Surface — ONLY show the two selected sites (no extra clutter)
+
     viewer.scene.requestRender();
   };
 
   // Re-build entities only when sites or trajectory toggles change
   useEffect(() => {
     updateViewerEntities(viewerARef.current, siteA, siteB);
-    if (viewMode === 'split') {
-      updateViewerEntities(viewerBRef.current, siteB || siteA, siteA);
-    }
   }, [
     siteA,
     siteB,
@@ -1301,6 +1375,9 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     showSunOrbit,
     showEarthOrbit,
     allPointsA,
+    showGraticule,
+    allSites,
+    pendingPickCoords,
   ]);
 
   // High-Speed Auto-Spin Turntable Loop
@@ -1314,7 +1391,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
       if (autoSpin && !isInteractingRef.current) {
         const radPerSec = spinSpeeds[spinSpeedIndex] || 0.55;
-        const angle = radPerSec * dt;
+        const angle = -radPerSec * dt;
         const rotMat = Cesium.Matrix3.fromRotationZ(angle);
 
         const rotateViewer = (viewer: Cesium.Viewer | null) => {
@@ -1328,9 +1405,6 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
         };
 
         rotateViewer(viewerARef.current);
-        if (viewMode === 'split') {
-          rotateViewer(viewerBRef.current);
-        }
       }
 
       animId = requestAnimationFrame(spinLoop);
@@ -1338,7 +1412,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
 
     animId = requestAnimationFrame(spinLoop);
     return () => cancelAnimationFrame(animId);
-  }, [autoSpin, spinSpeedIndex, viewMode]);
+  }, [autoSpin, spinSpeedIndex]);
 
   // Quick Camera Presets
   const flyToSouthPole = () => {
@@ -1347,12 +1421,6 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       destination: Cesium.Cartesian3.fromDegrees(siteA.lon, -89.2, 550000, moon),
       duration: 1.5,
     });
-    if (viewerBRef.current && siteB) {
-      viewerBRef.current.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(siteB.lon, -89.2, 550000, moon),
-        duration: 1.5,
-      });
-    }
   };
 
   const flyToSiteA = () => {
@@ -1366,8 +1434,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
   const flyToSiteB = () => {
     const moon = Cesium.Ellipsoid.MOON;
     if (siteB) {
-      const target = viewMode === 'split' ? viewerBRef.current : viewerARef.current;
-      target?.camera.flyTo({
+      viewerARef.current?.camera.flyTo({
         destination: Cesium.Cartesian3.fromDegrees(siteB.lon, siteB.lat, 180000, moon),
         duration: 1.5,
       });
@@ -1378,10 +1445,6 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     const moon = Cesium.Ellipsoid.MOON;
     viewerARef.current?.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(siteA.lon, 0, 4800000, moon),
-      duration: 1.5,
-    });
-    viewerBRef.current?.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(siteB?.lon || 0, 0, 4800000, moon),
       duration: 1.5,
     });
   };
@@ -1449,40 +1512,27 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
       duration: 1.8,
     });
-
-    if (viewMode === 'split' && viewerBRef.current && !viewerBRef.current.isDestroyed()) {
-      viewerBRef.current.camera.flyTo({
-        destination,
-        orientation: {
-          direction,
-          up,
-        },
-        duration: 1.8,
-      });
-    }
   };
 
-  // Dedicated Zoom Controls
+  // Dedicated Zoom Controls with Surface Collision Prevention
   const handleZoomIn = () => {
     const v = viewerARef.current;
-    if (!v) return;
-    const height = v.camera.positionCartographic?.height || 1000000;
-    const moveAmount = Math.max(3000, height * 0.35);
-    v.camera.zoomIn(moveAmount);
-    if (viewMode === 'split' && viewerBRef.current) {
-      viewerBRef.current.camera.zoomIn(moveAmount);
+    if (!v || v.isDestroyed()) return;
+    const height = getMoonCameraAltitude(v.camera);
+    if (height <= 350) return; // Enforce safe minimum altitude (300m)
+    const maxMove = Math.max(0, height - 300);
+    const moveAmount = Math.min(maxMove, Math.max(200, height * 0.35));
+    if (moveAmount > 0) {
+      v.camera.zoomIn(moveAmount);
     }
   };
 
   const handleZoomOut = () => {
     const v = viewerARef.current;
-    if (!v) return;
-    const height = v.camera.positionCartographic?.height || 1000000;
-    const moveAmount = Math.max(5000, height * 0.45);
+    if (!v || v.isDestroyed()) return;
+    const height = Math.max(500, getMoonCameraAltitude(v.camera));
+    const moveAmount = Math.max(1000, height * 0.45);
     v.camera.zoomOut(moveAmount);
-    if (viewMode === 'split' && viewerBRef.current) {
-      viewerBRef.current.camera.zoomOut(moveAmount);
-    }
   };
 
   const handleFitMoon = () => {
@@ -1491,12 +1541,15 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       destination: Cesium.Cartesian3.fromDegrees(siteA.lon, siteA.lat, 2400000, moon),
       duration: 1.2,
     });
-    if (viewMode === 'split' && viewerBRef.current && siteB) {
-      viewerBRef.current.camera.flyTo({
-        destination: Cesium.Cartesian3.fromDegrees(siteB.lon, siteB.lat, 2400000, moon),
-        duration: 1.2,
-      });
-    }
+  };
+
+  const flyToCoordinates = (lat: number, lon: number, heightKm = 450) => {
+    const viewer = viewerARef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(lon, lat, heightKm * 1000, Cesium.Ellipsoid.MOON),
+      duration: 1.5,
+    });
   };
 
   // Keyboard shortcut listener for +/- zoom
@@ -1513,7 +1566,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode]);
+  }, []);
 
   // Expose Camera and Navigation API to parent/right-panel
   useImperativeHandle(ref, () => ({
@@ -1525,31 +1578,28 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
     handleFitMoon,
     handleZoomIn,
     handleZoomOut,
+    flyToCoordinates,
   }));
 
   return (
     <div className="relative w-full h-full flex flex-col overflow-hidden bg-space-950 select-none">
-      {/* Main 3D Cesium Viewports */}
+      {/* Main 3D Cesium Viewport (100% clean, unobstructed lunar view) */}
       <div className="w-full flex-1 flex relative">
-        {viewMode === 'overlapped' ? (
-          // OVERLAPPED MODE: Single Wide Cesium Viewer (100% clean, unobstructed lunar view)
-          <div ref={containerRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
-        ) : (
-          // SPLIT MODE: Dual Cesium Viewers side-by-side
-          <div className="w-full h-full flex divide-x divide-slate-800">
-            <div className="relative w-1/2 h-full flex flex-col">
-              <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-cyan-500/40 text-[11px] font-mono text-cyan-300 font-bold shadow-md">
-                LOCATION A: {siteA.name.split('(')[0].trim()}
-              </div>
-              <div ref={containerRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
-            </div>
+        <div ref={containerRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
 
-            <div className="relative w-1/2 h-full flex flex-col">
-              <div className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded-md bg-space-950/85 backdrop-blur-sm border border-amber-500/40 text-[11px] font-mono text-amber-300 font-bold shadow-md">
-                LOCATION B: {siteB ? siteB.name.split('(')[0].trim() : 'Site B'}
-              </div>
-              <div ref={containerBRef} className="w-full h-full block" style={{ touchAction: 'none' }} />
-            </div>
+        {/* Active 3D Location Picker Guidance Banner */}
+        {isPickingLocation && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2.5 px-4 py-2 rounded-full bg-space-950/95 border border-cyan-400 text-cyan-200 text-xs font-mono shadow-2xl backdrop-blur-md animate-fade-in">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping inline-block" />
+            <span className="font-bold text-slate-100">3D TARGET PICKER: Click anywhere on lunar surface</span>
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={onCancelPickLocation}
+              className="h-5 px-2 text-[10px] text-slate-300 hover:text-white bg-space-900 border border-slate-700 rounded-full ml-1"
+            >
+              Cancel (Esc)
+            </Button>
           </div>
         )}
 
@@ -1561,7 +1611,7 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
               ALTITUDE
             </span>
             <span className="text-xs font-bold text-slate-100">
-              {altitudeKm >= 1000 ? `${(altitudeKm / 1000).toFixed(1)}k` : altitudeKm} km
+              {altitudeKm >= 1000 ? `${(altitudeKm / 1000).toFixed(1)}k km` : altitudeKm < 1 ? `${Math.round(altitudeKm * 1000)} m` : `${altitudeKm} km`}
             </span>
           </div>
 
@@ -1607,6 +1657,24 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
               className="h-7 w-7 text-slate-300 hover:text-cyan-300"
             >
               <RotateCcw className="w-3.5 h-3.5" />
+            </Button>
+
+            {/* 3D Location Picker Button */}
+            <Button
+              variant={isPickingLocation ? 'nasa' : 'secondary'}
+              size="icon-sm"
+              onClick={() => {
+                if (isPickingLocation) onCancelPickLocation?.();
+                else onStartPickLocation?.();
+              }}
+              title={isPickingLocation ? 'Cancel 3D Location Pick (Esc)' : 'Pick Target Directly on 3D Moon'}
+              className={`h-7 w-7 transition-all ${
+                isPickingLocation
+                  ? 'bg-cyan-500 text-space-950 font-bold ring-2 ring-cyan-400 animate-pulse'
+                  : 'text-slate-300 hover:text-cyan-300'
+              }`}
+            >
+              <Crosshair className="w-3.5 h-3.5" />
             </Button>
 
             <div className="h-px w-5 bg-slate-700/80 my-0.5" />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  ComparisonViewMode,
   EphemerisPoint,
   HorizonMask,
   ScenarioConfig,
@@ -19,6 +18,7 @@ import { computeSlipAnalysis } from './engine/slip';
 import { findAlternativeScenarios, AlternativeCandidate } from './engine/alternatives';
 import { runMonteCarloAssessment } from './engine/monteCarlo';
 import { NasaHeader } from './ui/NasaHeader';
+import { TopToolRibbon } from './ui/TopToolRibbon';
 import { CesiumLunarViewport, CesiumViewportHandle } from './ui/CesiumLunarViewport';
 import { LeftControlPanel } from './ui/LeftControlPanel';
 import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
@@ -28,12 +28,17 @@ import { AlternativesModal } from './ui/AlternativesModal';
 import { MapPicker2D } from './ui/MapPicker2D';
 import { LearnTourModal } from './ui/LearnTourModal';
 import { ExportModal } from './ui/ExportModal';
-import { DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui';
+import { MissionOverviewModal } from './ui/MissionOverviewModal';
+import { DesignateSiteModal } from './ui/DesignateSiteModal';
+import { DialogContent, DialogHeader, DialogTitle, DialogDescription, ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from '@/components/ui';
 
 export const App: React.FC = () => {
-  // UI & View Mode: starts in Simple View with 3D-first central focus
+  // UI Mode: starts in Simple View with 3D-first central focus
   const [uiMode, setUIMode] = useState<UIMode>('simple');
-  const [viewMode, setViewMode] = useState<ComparisonViewMode>('overlapped');
+
+  // Resizable Sidebars imperative refs
+  const leftPanelRef = usePanelRef();
+  const rightPanelRef = usePanelRef();
 
   // Epoch & Window
   const [startDateIso, setStartDateIso] = useState('2026-11-20');
@@ -46,6 +51,15 @@ export const App: React.FC = () => {
   const windowEndMs = useMemo(() => {
     return windowStartMs + windowDays * 24 * 3600 * 1000;
   }, [windowStartMs, windowDays]);
+
+  const handleUpdateWindow = (newStartMs: number, newEndMs: number) => {
+    if (newEndMs <= newStartMs) return;
+    const newStartDate = new Date(newStartMs).toISOString().split('T')[0];
+    const days = Math.max(1, Math.round((newEndMs - newStartMs) / (24 * 3600 * 1000)));
+    setStartDateIso(newStartDate);
+    setWindowDays(days);
+    setCurrentScrubMs((prev) => Math.max(newStartMs, Math.min(newEndMs, prev)));
+  };
 
   const [currentScrubMs, setCurrentScrubMs] = useState(windowStartMs);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,9 +77,22 @@ export const App: React.FC = () => {
   const [showSightlines, setShowSightlines] = useState(true);
   const [showSunOrbit, setShowSunOrbit] = useState(true);
   const [showEarthOrbit, setShowEarthOrbit] = useState(true);
+  const [showGraticule, setShowGraticule] = useState(true);
   const [autoSpin, setAutoSpin] = useState(false);
   const [spinSpeedIndex, setSpinSpeedIndex] = useState(1);
   const cesiumViewportRef = useRef<CesiumViewportHandle | null>(null);
+
+  // Planetary Mission Highlights (Sunlight, Earth Direct Comm, Overlap, and Scientific Overlays)
+  const [showSunHighlight, setShowSunHighlight] = useState(true); // Enabled by default
+  const [showEarthHighlight, setShowEarthHighlight] = useState(true); // Enabled by default
+  const [showIceOverlay, setShowIceOverlay] = useState(false); // Disabled by default
+  const [showRockOverlay, setShowRockOverlay] = useState(false); // Disabled by default
+  const [showSlopeOverlay, setShowSlopeOverlay] = useState(false); // Disabled by default
+
+  // Top Ribbon & Sidebar Synchronized Navigation
+  const [activeTool, setActiveTool] = useState<string>('landing-sites');
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
 
   // Modals
   const [showSlipModal, setShowSlipModal] = useState(false);
@@ -74,6 +101,72 @@ export const App: React.FC = () => {
   const [mapTarget, setMapTarget] = useState<'A' | 'B'>('A');
   const [showLearnTourModal, setShowLearnTourModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showMissionOverviewModal, setShowMissionOverviewModal] = useState(false);
+
+  // 3D Direct Surface Picking Mode
+  const [isPicking3DLocation, setIsPicking3DLocation] = useState(false);
+  const [pendingPickCoords, setPendingPickCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [showDesignateSiteModal, setShowDesignateSiteModal] = useState(false);
+
+  // Sidebar Collapse Toggles via Resizable Panel API
+  const toggleLeftCollapse = () => {
+    const panel = leftPanelRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) {
+      panel.expand();
+      setIsLeftCollapsed(false);
+    } else {
+      panel.collapse();
+      setIsLeftCollapsed(true);
+    }
+  };
+
+  const toggleRightCollapse = () => {
+    const panel = rightPanelRef.current;
+    if (!panel) return;
+    if (panel.isCollapsed()) {
+      panel.expand();
+      setIsRightCollapsed(false);
+    } else {
+      panel.collapse();
+      setIsRightCollapsed(true);
+    }
+  };
+
+  // Top Ribbon Tool Selection Handler: Opens the relevant sidebar showing ONLY that tool
+  const handleSelectTool = (toolId: string) => {
+    setActiveTool(toolId);
+
+    const leftTools = ['landing-sites', 'layer-management', 'coordinates', 'placemarks', 'graticule'];
+    const rightTools = [
+      'measurements',
+      'terrain-profile',
+      'sight-lines',
+      'viewshed',
+      'polar-sky',
+      'monte-carlo',
+      'places-of-interest',
+      'moon-shading',
+    ];
+
+    if (leftTools.includes(toolId)) {
+      leftPanelRef.current?.expand();
+      setIsLeftCollapsed(false);
+      if (toolId === 'graticule') {
+        setShowGraticule((prev) => !prev);
+      }
+    } else if (rightTools.includes(toolId)) {
+      rightPanelRef.current?.expand();
+      setIsRightCollapsed(false);
+      if (toolId === 'sight-lines') {
+        setShowSightlines(true);
+      }
+    } else if (toolId === 'search-lunar') {
+      setIsPicking3DLocation(true);
+    } else if (toolId === 'hls-overview') {
+      setShowMissionOverviewModal(true);
+    }
+  };
 
   // Reset scrub when window shifts
   useEffect(() => {
@@ -98,7 +191,6 @@ export const App: React.FC = () => {
         if (epoch) setStartDateIso(epoch);
         if (days) setWindowDays(Number(days));
         if (m === 'simple' || m === 'detailed') setUIMode(m);
-        if (vm === 'overlapped' || vm === 'split') setViewMode(vm);
 
         if (sA) {
           const matchA = LUNAR_SITES.find((s) => s.id === sA);
@@ -119,7 +211,6 @@ export const App: React.FC = () => {
     params.set('epoch', startDateIso);
     params.set('days', windowDays.toString());
     params.set('mode', uiMode);
-    params.set('view', viewMode);
     params.set('sA', siteA.id);
     params.set('sB', siteB.id);
     const url = `${window.location.origin}${window.location.pathname}#${params.toString()}`;
@@ -221,10 +312,10 @@ export const App: React.FC = () => {
     };
   }, [siteB, maskB, currentBodyVecs, currentScrubMs]);
 
-  // Monte Carlo Assessment for Site A
+  // Monte Carlo Assessment for Site A (calibrated against real LOLA terrain mask)
   const monteCarloA = useMemo(() => {
-    return runMonteCarloAssessment(siteA, scenarioConfigA, windowStartMs, windowEndMs, 120);
-  }, [siteA, scenarioConfigA, windowStartMs, windowEndMs]);
+    return runMonteCarloAssessment(siteA, scenarioConfigA, windowStartMs, windowEndMs, 120, maskA);
+  }, [siteA, scenarioConfigA, windowStartMs, windowEndMs, maskA]);
 
   // Slip analysis for Site A
   const slipCasesA = useMemo(() => {
@@ -303,6 +394,10 @@ export const App: React.FC = () => {
       elevKm: 0,
       verified: true,
       note: 'User designated coordinates on lunar surface.',
+      slopeDeg: 3.5,
+      distanceToSteepTerrainM: 200,
+      nearestPsrDistanceKm: lat < -80 ? 1.5 : 25,
+      terrainConfidence: 'moderate',
       rockAbundance: 15,
       thermalInertia: 60,
       volatileIceScore: lat < -80 ? 75 : 10,
@@ -314,95 +409,238 @@ export const App: React.FC = () => {
     setShowMapPickerModal(false);
   };
 
+  // 3D Direct Surface Picking Handlers
+  const handlePickSurfaceCoords = (lat: number, lon: number) => {
+    setPendingPickCoords({ lat, lon });
+    setShowDesignateSiteModal(true);
+  };
+
+  const handleConfirmDesignatedSite = (name: string, target: 'A' | 'B') => {
+    if (!pendingPickCoords) return;
+    const { lat, lon } = pendingPickCoords;
+    const latStr = `${Math.abs(lat).toFixed(3)}°${lat < 0 ? 'S' : 'N'}`;
+    const lonStr = `${Math.abs(lon).toFixed(3)}°${lon >= 0 ? 'E' : 'W'}`;
+
+    const customSite: Site = {
+      id: `custom_${lat.toFixed(4)}_${lon.toFixed(4)}`,
+      name: name.trim() || `Designated Site (${latStr}, ${lonStr})`,
+      agency: 'User Custom Target',
+      kind: 'candidate',
+      region: lat < -75 ? 'south_pole' : 'equatorial',
+      lat,
+      lon,
+      elevKm: 0,
+      verified: true,
+      note: `Designated on 3D Moon at ${latStr}, ${lonStr}.`,
+      slopeDeg: 3.5,
+      distanceToSteepTerrainM: 200,
+      nearestPsrDistanceKm: lat < -80 ? 1.5 : 25,
+      terrainConfidence: 'moderate',
+      rockAbundance: 15,
+      thermalInertia: 60,
+      volatileIceScore: lat < -80 ? 75 : 10,
+      isPsrColdTrap: false,
+    };
+
+    if (target === 'A') {
+      setSiteA(customSite);
+    } else {
+      setSiteB(customSite);
+    }
+
+    setShowDesignateSiteModal(false);
+    setPendingPickCoords(null);
+    setIsPicking3DLocation(false);
+
+    // Smoothly fly camera to newly designated target
+    cesiumViewportRef.current?.flyToCoordinates(lat, lon, 450);
+  };
+
+  const handleCancelPick = () => {
+    setShowDesignateSiteModal(false);
+    setPendingPickCoords(null);
+    setIsPicking3DLocation(false);
+  };
+
+  // Keyboard shortcut: Escape cancels 3D pick mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isPicking3DLocation) {
+        handleCancelPick();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPicking3DLocation]);
+
   return (
     <div className="w-screen h-screen overflow-hidden bg-space-950 text-slate-100 flex flex-col select-none">
       {/* NASA Mission Operations Header */}
       <NasaHeader
         uiMode={uiMode}
         onSetUIMode={setUIMode}
-        viewMode={viewMode}
-        onSetViewMode={setViewMode}
         startDateIso={startDateIso}
         onSetStartDate={setStartDateIso}
         windowDays={windowDays}
         onSetWindowDays={setWindowDays}
         onOpenLearnTour={() => setShowLearnTourModal(true)}
+        onOpenMissionOverview={() => setShowMissionOverviewModal(true)}
         onShareUrl={handleShareUrl}
       />
 
-      {/* Main Mission Operations Center (Full Viewport with 3D Center & Side Panels) */}
+      {/* Top Tool Ribbon (Celestial Mapping System Card Toolbar) */}
+      <TopToolRibbon
+        activeTool={activeTool}
+        onSelectTool={handleSelectTool}
+        showGraticule={showGraticule}
+      />
+
+      {/* Main Mission Operations Center with Resizable Sidebars */}
       <div className="flex-1 w-full flex overflow-hidden relative">
-        {/* Left Side Control Panel (Collapsible) */}
-        <LeftControlPanel
-          siteA={siteA}
-          siteB={siteB}
-          onSelectSiteA={setSiteA}
-          onSelectSiteB={setSiteB}
-          allSites={LUNAR_SITES}
-          isSiteALit={currentPointA.sun.isVisible}
-          isSiteBLit={currentPointB.sun.isVisible}
-          onOpenMapPicker={() => {
-            setMapTarget('A');
-            setShowMapPickerModal(true);
-          }}
-        />
+        <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+          {/* Left Resizable Sidebar */}
+          <ResizablePanel
+            panelRef={leftPanelRef}
+            id="left-sidebar"
+            defaultSize="20%"
+            minSize={260}
+            maxSize={550}
+            collapsible={true}
+            collapsedSize={40}
+            onResize={() => {
+              if (leftPanelRef.current) {
+                setIsLeftCollapsed(leftPanelRef.current.isCollapsed());
+              }
+            }}
+            className="transition-all duration-150"
+          >
+            <LeftControlPanel
+              activeTool={activeTool}
+              siteA={siteA}
+              siteB={siteB}
+              onSelectSiteA={setSiteA}
+              onSelectSiteB={setSiteB}
+              allSites={LUNAR_SITES}
+              isSiteALit={currentPointA.sun.isVisible}
+              isSiteBLit={currentPointB.sun.isVisible}
+              isCollapsed={isLeftCollapsed}
+              onToggleCollapse={toggleLeftCollapse}
+              showGraticule={showGraticule}
+              onToggleGraticule={() => setShowGraticule(!showGraticule)}
+              showSightlines={showSightlines}
+              onToggleSightlines={() => setShowSightlines(!showSightlines)}
+              showSunOrbit={showSunOrbit}
+              onToggleSunOrbit={() => setShowSunOrbit(!showSunOrbit)}
+              showSunHighlight={showSunHighlight}
+              onToggleSunHighlight={() => setShowSunHighlight(!showSunHighlight)}
+              showEarthHighlight={showEarthHighlight}
+              onToggleEarthHighlight={() => setShowEarthHighlight(!showEarthHighlight)}
+              showIceOverlay={showIceOverlay}
+              onToggleIceOverlay={() => setShowIceOverlay(!showIceOverlay)}
+              showRockOverlay={showRockOverlay}
+              onToggleRockOverlay={() => setShowRockOverlay(!showRockOverlay)}
+              showSlopeOverlay={showSlopeOverlay}
+              onToggleSlopeOverlay={() => setShowSlopeOverlay(!showSlopeOverlay)}
+              sunVec={currentBodyVecs.sun}
+              earthVec={currentBodyVecs.earth}
+              onStart3DPicking={() => setIsPicking3DLocation(true)}
+              onFlyToSite={(site) => {
+                cesiumViewportRef.current?.flyToCoordinates(site.lat, site.lon, 450);
+              }}
+            />
+          </ResizablePanel>
 
-        {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
-        <div className="flex-1 h-full relative">
-          <CesiumLunarViewport
-            ref={cesiumViewportRef}
-            viewMode={viewMode}
-            siteA={siteA}
-            siteB={siteB}
-            currentPointA={currentPointA}
-            currentPointB={currentPointB}
-            allPointsA={evaluationA.points}
-            allPointsB={evaluationB.points}
-            sunVec={currentBodyVecs.sun}
-            earthVec={currentBodyVecs.earth}
-            currentTimeMs={currentScrubMs}
-            showSightlines={showSightlines}
-            showSunOrbit={showSunOrbit}
-            showEarthOrbit={showEarthOrbit}
-            autoSpin={autoSpin}
-            spinSpeedIndex={spinSpeedIndex}
-          />
-        </div>
+          <ResizableHandle withHandle={!isLeftCollapsed} />
 
-        {/* Right Side Telemetry & Feasibility Panel (Collapsible) */}
-        <RightTelemetryPanel
-          uiMode={uiMode}
-          siteA={siteA}
-          siteB={siteB}
-          evaluationA={evaluationA}
-          evaluationB={evaluationB}
-          currentPointA={currentPointA}
-          currentPointB={currentPointB}
-          allPointsA={evaluationA.points}
-          allPointsB={evaluationB.points}
-          maskA={maskA}
-          monteCarloA={monteCarloA}
-          slipCasesA={slipCasesA}
-          onOpenSlipTable={() => setShowSlipModal(true)}
-          onOpenAlternatives={() => setShowAlternativesModal(true)}
-          onOpenExport={() => setShowExportModal(true)}
-          showSightlines={showSightlines}
-          onToggleSightlines={() => setShowSightlines((p) => !p)}
-          showSunOrbit={showSunOrbit}
-          onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
-          showEarthOrbit={showEarthOrbit}
-          onToggleEarthOrbit={() => setShowEarthOrbit((p) => !p)}
-          autoSpin={autoSpin}
-          onToggleAutoSpin={() => setAutoSpin((p) => !p)}
-          spinSpeedIndex={spinSpeedIndex}
-          onSetSpinSpeedIndex={setSpinSpeedIndex}
-          onFlyToSouthPole={() => cesiumViewportRef.current?.flyToSouthPole()}
-          onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
-          onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
-          onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
-          onFlyToMoonSystemFocus={() => cesiumViewportRef.current?.flyToMoonSystemFocus()}
-          onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
-        />
+          {/* Central 3D Lunar Viewport (ALWAYS FOCUSED ON THE 3D MOON IN CESIUM) */}
+          <ResizablePanel id="center-viewport" minSize={360} className="relative h-full">
+            <CesiumLunarViewport
+              ref={cesiumViewportRef}
+              siteA={siteA}
+              siteB={siteB}
+              currentPointA={currentPointA}
+              currentPointB={currentPointB}
+              allPointsA={evaluationA.points}
+              allPointsB={evaluationB.points}
+              sunVec={currentBodyVecs.sun}
+              earthVec={currentBodyVecs.earth}
+              currentTimeMs={currentScrubMs}
+              showSightlines={showSightlines}
+              showSunOrbit={showSunOrbit}
+              showEarthOrbit={showEarthOrbit}
+              showSunHighlight={showSunHighlight}
+              showEarthHighlight={showEarthHighlight}
+              showIceOverlay={showIceOverlay}
+              showRockOverlay={showRockOverlay}
+              showSlopeOverlay={showSlopeOverlay}
+              autoSpin={autoSpin}
+              spinSpeedIndex={spinSpeedIndex}
+              showGraticule={showGraticule}
+              allSites={LUNAR_SITES}
+              isPickingLocation={isPicking3DLocation}
+              onPickSurfaceCoords={handlePickSurfaceCoords}
+              onStartPickLocation={() => setIsPicking3DLocation(true)}
+              onCancelPickLocation={handleCancelPick}
+              pendingPickCoords={pendingPickCoords}
+            />
+          </ResizablePanel>
+
+          <ResizableHandle withHandle={!isRightCollapsed} />
+
+          {/* Right Resizable Sidebar */}
+          <ResizablePanel
+            panelRef={rightPanelRef}
+            id="right-sidebar"
+            defaultSize="22%"
+            minSize={260}
+            maxSize={600}
+            collapsible={true}
+            collapsedSize={40}
+            onResize={() => {
+              if (rightPanelRef.current) {
+                setIsRightCollapsed(rightPanelRef.current.isCollapsed());
+              }
+            }}
+            className="transition-all duration-150"
+          >
+            <RightTelemetryPanel
+              uiMode={uiMode}
+              siteA={siteA}
+              siteB={siteB}
+              evaluationA={evaluationA}
+              evaluationB={evaluationB}
+              currentPointA={currentPointA}
+              currentPointB={currentPointB}
+              allPointsA={evaluationA.points}
+              allPointsB={evaluationB.points}
+              maskA={maskA}
+              monteCarloA={monteCarloA}
+              slipCasesA={slipCasesA}
+              windowStartMs={windowStartMs}
+              windowEndMs={windowEndMs}
+              onScrub={setCurrentScrubMs}
+              activeTool={activeTool}
+              isCollapsed={isRightCollapsed}
+              onToggleCollapse={toggleRightCollapse}
+              showSightlines={showSightlines}
+              onToggleSightlines={() => setShowSightlines((p) => !p)}
+              showSunOrbit={showSunOrbit}
+              onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
+              showEarthOrbit={showEarthOrbit}
+              onToggleEarthOrbit={() => setShowEarthOrbit((p) => !p)}
+              autoSpin={autoSpin}
+              onToggleAutoSpin={() => setAutoSpin((p) => !p)}
+              spinSpeedIndex={spinSpeedIndex}
+              onSetSpinSpeedIndex={setSpinSpeedIndex}
+              onFlyToSouthPole={() => cesiumViewportRef.current?.flyToSouthPole()}
+              onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
+              onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
+              onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
+              onFlyToMoonSystemFocus={() => cesiumViewportRef.current?.flyToMoonSystemFocus()}
+              onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
 
       {/* Unified NASA Bottom Dock (Fluid Scrubber + UTC Input + Dual-Location Stacked Gantt Tracks) */}
@@ -430,9 +668,19 @@ export const App: React.FC = () => {
           setIsPlaying(false);
           setCurrentScrubMs(windowStartMs);
         }}
+        onUpdateWindow={handleUpdateWindow}
       />
 
       {/* Modals */}
+      {showDesignateSiteModal && pendingPickCoords && (
+        <DesignateSiteModal
+          coords={pendingPickCoords}
+          initialTarget="A"
+          onConfirm={handleConfirmDesignatedSite}
+          onClose={handleCancelPick}
+        />
+      )}
+
       {showSlipModal && (
         <SlipTable
           slipCases={slipCasesA}
@@ -484,6 +732,19 @@ export const App: React.FC = () => {
           evaluation={evaluationA}
           site={siteA}
           onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {showMissionOverviewModal && (
+        <MissionOverviewModal
+          site={siteA}
+          evaluation={evaluationA}
+          startDateIso={startDateIso}
+          windowDays={windowDays}
+          onSelectSite={(newSite) => {
+            setSiteA(newSite);
+          }}
+          onClose={() => setShowMissionOverviewModal(false)}
         />
       )}
     </div>

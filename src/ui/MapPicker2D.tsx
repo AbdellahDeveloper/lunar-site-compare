@@ -99,17 +99,19 @@ export const MapPicker2D: React.FC<MapPicker2DProps> = ({
         ctx.fillText(`${deg}°`, lx, ly);
       }
 
-      // Draw Key South Pole Craters & PSRs
+      // Draw NASA IAU Gazetted South Pole Craters & LOLA-mapped PSR Cold Traps
+      // Dimensions sourced from NASA PDS / USGS Planetary Gazetteer & LOLA Polar Illumination Catalog
       const polarFeatures = [
-        { name: 'Shackleton', lat: -89.78, lon: 129.5, rKm: 21, isPsr: true },
-        { name: 'Haworth', lat: -87.4, lon: -5.1, rKm: 51, isPsr: true },
-        { name: 'Shoemaker', lat: -88.1, lon: 45.0, rKm: 50, isPsr: true },
-        { name: 'Faustini', lat: -87.3, lon: 77.0, rKm: 39, isPsr: true },
-        { name: 'de Gerlache', lat: -88.5, lon: -88.0, rKm: 32, isPsr: true },
-        { name: 'Nobile', lat: -85.2, lon: 35.8, rKm: 73, isPsr: false },
-        { name: 'Cabeus', lat: -84.9, lon: -35.5, rKm: 98, isPsr: true },
-        { name: 'Malapert', lat: -84.9, lon: 12.9, rKm: 69, isPsr: false },
-        { name: 'Amundsen', lat: -84.5, lon: 82.8, rKm: 101, isPsr: false },
+        { name: 'Shackleton PSR', lat: -89.67, lon: 129.78, rKm: 10.45, depthKm: 4.2, isPsr: true },
+        { name: 'Haworth PSR (35K)', lat: -87.45, lon: -5.17, rKm: 25.7, depthKm: 3.6, isPsr: true },
+        { name: 'Shoemaker PSR', lat: -88.14, lon: 45.91, rKm: 25.45, depthKm: 3.1, isPsr: true },
+        { name: 'Faustini PSR', lat: -87.18, lon: 84.31, rKm: 19.5, depthKm: 3.1, isPsr: true },
+        { name: 'de Gerlache PSR', lat: -88.48, lon: -88.34, rKm: 16.2, depthKm: 3.8, isPsr: true },
+        { name: 'Cabeus PSR (LCROSS)', lat: -84.90, lon: -35.50, rKm: 49.0, depthKm: 4.0, isPsr: true },
+        { name: 'Nobile Crater', lat: -85.28, lon: 35.84, rKm: 39.65, depthKm: 3.7, isPsr: false },
+        { name: 'Malapert Massif', lat: -84.90, lon: 12.90, rKm: 34.5, depthKm: 5.0, isPsr: false },
+        { name: 'Amundsen Basin', lat: -84.44, lon: 83.07, rKm: 51.5, depthKm: 4.8, isPsr: false },
+        { name: 'Slater Crater', lat: -88.08, lon: 111.29, rKm: 12.55, depthKm: 2.8, isPsr: true },
       ];
 
       for (const feat of polarFeatures) {

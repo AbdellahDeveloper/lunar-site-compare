@@ -1,5 +1,6 @@
 export type SiteKind = 'past' | 'planned' | 'candidate';
 export type SiteRegion = 'south_pole' | 'equatorial' | 'farside' | 'mid_latitude';
+export type ArtemisRegionCode = 'PCB' | 'HW' | 'MMA' | 'MMP' | 'MMO' | 'NR1' | 'NR2' | 'dGR2' | 'SP' | 'OTHER';
 
 export type ScientificLayer = 'none' | 'volatiles' | 'thermal' | 'shadow';
 export type ComparisonViewMode = 'overlapped' | 'split';
@@ -18,6 +19,18 @@ export interface Site {
   note: string;
   targetDate?: string;  // e.g. '2026-11-15'
   hasCustomHorizon?: boolean;
+
+  // Artemis III Official Region & Wueller et al. 2026 Research Catalog
+  artemisRegionCode?: ArtemisRegionCode;
+  regionName?: string;
+  slopeDeg: number;                  // surface slope in degrees (constraint < 8°, goal < 5°)
+  distanceToSteepTerrainM: number;   // meters to terrain steeper than 8° (constraint >= 100 m)
+  nearestPsrDistanceKm: number;      // km to nearest permanently shadowed region (walk radius <= 2.0 km)
+  psrName?: string;
+  terrainConfidence: 'high' | 'moderate' | 'low';
+  lolaObsDensity?: number;           // observations per pixel (data coverage)
+  elevationUncertaintyM?: number;    // height uncertainty in meters (LOLA RMS ~0.3 - 0.5 m)
+  slopeUncertaintyDeg?: number;      // slope uncertainty in degrees (~1.5 - 2.5°)
   
   // Scientific exploration layers (LRO Diviner & LEND)
   rockAbundance: number;      // 0-100% surface rockiness / thermal inertia hazard
@@ -45,6 +58,8 @@ export interface TopocentricCoords {
   distanceKm: number;
   horizonDeg: number;    // terrain horizon elevation at this azimuth
   elevationAboveHorizon: number; // elevationDeg - horizonDeg
+  clearanceDeg: number;  // C(t) = elevationDeg - horizonDeg
+  geometricElevationDeg: number; // elevation relative to spherical lunar datum
   isVisible: boolean;    // accounting for disk radius or center line-of-sight
 }
 
@@ -173,6 +188,30 @@ export interface MonteCarloResult {
   darknessHistogram: { binHours: string; count: number }[];
   riskRating: 'Low' | 'Moderate' | 'High' | 'Severe';
   recommendation: string;
+}
+
+export interface MissionCriteriaWeights {
+  solar: number;             // w1 (0 to 1)
+  earth: number;             // w2 (0 to 1)
+  jointBothUp: number;       // w3 (0 to 1)
+  landingSlope: number;      // w4 (0 to 1)
+  terrainConfidence: number; // w5 (0 to 1)
+  psrAccessibility: number;  // w6 (0 to 1)
+}
+
+export interface SiteScoreResult {
+  site: Site;
+  totalScore: number; // 0 to 100
+  rank: number;
+  breakdown: {
+    solarScore: number;
+    earthScore: number;
+    jointScore: number;
+    slopeScore: number;
+    confidenceScore: number;
+    psrScore: number;
+  };
+  paretoStatus: string;
 }
 
 export type AppMode = 'planner' | 'explorer' | 'learn';

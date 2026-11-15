@@ -53,17 +53,24 @@ export function evaluateVisibilityAtInstant(
     trackingPowerFlux = Math.max(0, Math.cos(elRad));
   }
 
+  const sunClearance = sunTopo.elevationDeg - sunHorizonDeg;
+  const earthClearance = earthTopo.elevationDeg - earthHorizonDeg;
+
   const sun: TopocentricCoords = {
     ...sunTopo,
     horizonDeg: sunHorizonDeg,
-    elevationAboveHorizon: sunTopo.elevationDeg - sunHorizonDeg,
+    elevationAboveHorizon: sunClearance,
+    clearanceDeg: sunClearance,
+    geometricElevationDeg: sunTopo.elevationDeg,
     isVisible: isSunVisible,
   };
 
   const earth: TopocentricCoords = {
     ...earthTopo,
     horizonDeg: earthHorizonDeg,
-    elevationAboveHorizon: earthTopo.elevationDeg - earthHorizonDeg,
+    elevationAboveHorizon: earthClearance,
+    clearanceDeg: earthClearance,
+    geometricElevationDeg: earthTopo.elevationDeg,
     isVisible: isEarthVisible,
   };
 

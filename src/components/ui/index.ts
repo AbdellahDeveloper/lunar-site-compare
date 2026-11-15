@@ -8,3 +8,6 @@ export * from "./separator";
 export * from "./select";
 export * from "./switch";
 export * from "./tooltip";
+export * from "./info-tooltip";
+export * from "./resizable";
+export * from "./input";
