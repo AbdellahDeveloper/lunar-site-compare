@@ -14,16 +14,20 @@ const ResizablePanelGroup = ({
   direction = "horizontal",
   orientation,
   ...props
-}: ResizablePanelGroupProps) => (
-  <ResizablePrimitive.Group
-    orientation={orientation || direction}
-    className={cn(
-      "flex h-full w-full data-[panel-group-direction=vertical]:flex-col",
-      className
-    )}
-    {...props}
-  />
-);
+}: ResizablePanelGroupProps) => {
+  const resolvedOrientation = orientation || direction;
+  return (
+    <ResizablePrimitive.Group
+      orientation={resolvedOrientation}
+      className={cn(
+        "flex h-full w-full",
+        resolvedOrientation === "vertical" ? "flex-col" : "flex-row",
+        className
+      )}
+      {...props}
+    />
+  );
+};
 
 const ResizablePanel = ResizablePrimitive.Panel;
 
@@ -33,27 +37,41 @@ const ResizableHandle = ({
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.Separator> & {
   withHandle?: boolean;
-}) => (
-  <ResizablePrimitive.Separator
-    className={cn(
-      "relative flex items-center justify-center bg-space-950 hover:bg-cyan-500/20 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 z-20 group",
-      // Horizontal group separator (vertical separator bar)
-      "w-2 data-[panel-group-direction=vertical]:w-full data-[panel-group-direction=vertical]:h-2",
-      "cursor-col-resize data-[panel-group-direction=vertical]:cursor-row-resize",
-      "border-x border-slate-800 data-[panel-group-direction=vertical]:border-x-0 data-[panel-group-direction=vertical]:border-y",
-      "after:absolute after:inset-y-0 after:left-1/2 after:w-2.5 after:-translate-x-1/2 data-[panel-group-direction=vertical]:after:inset-x-0 data-[panel-group-direction=vertical]:after:top-1/2 data-[panel-group-direction=vertical]:after:h-2.5 data-[panel-group-direction=vertical]:after:-translate-y-1/2 data-[panel-group-direction=vertical]:after:translate-x-0",
-      className
-    )}
-    {...props}
-  >
-    {withHandle && (
-      <div className="z-10 flex h-7 w-3.5 data-[panel-group-direction=vertical]:h-3.5 data-[panel-group-direction=vertical]:w-7 items-center justify-center rounded border border-slate-700 bg-space-900 group-hover:border-cyan-400 group-hover:bg-cyan-950/80 transition-colors shadow-md">
-        <GripVertical className="h-3.5 w-3.5 text-slate-400 group-hover:text-cyan-300 group-data-[panel-group-direction=vertical]:hidden" />
-        <GripHorizontal className="h-3.5 w-3.5 text-slate-400 group-hover:text-cyan-300 hidden group-data-[panel-group-direction=vertical]:block" />
-      </div>
-    )}
-  </ResizablePrimitive.Separator>
-);
+}) => {
+  const group = ResizablePrimitive.useParentGroup();
+  // When parent group orientation is "vertical", panels are stacked vertically (top & bottom).
+  // The separator between them is a horizontal bar across the full width.
+  const isHorizontalBar = group?.orientation === "vertical";
+
+  return (
+    <ResizablePrimitive.Separator
+      className={cn(
+        "relative flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 z-20 group",
+        isHorizontalBar
+          ? "w-full h-1 bg-space-950 border-t border-slate-800/90 hover:border-cyan-500/60 cursor-row-resize after:absolute after:inset-x-0 after:-top-2 after:-bottom-2 after:z-10"
+          : "w-1.5 h-full bg-space-950 border-x border-slate-800/90 hover:border-cyan-500/60 cursor-col-resize after:absolute after:inset-y-0 after:-left-2 after:-right-2 after:z-10",
+        className
+      )}
+      {...props}
+    >
+      {withHandle && (
+        <div
+          className={cn(
+            "z-20 flex items-center justify-center rounded-full border border-slate-700/80 bg-space-900 transition-colors shadow-sm",
+            "group-hover:border-cyan-400 group-hover:bg-cyan-950/90",
+            isHorizontalBar ? "h-2 w-16" : "w-2 h-14"
+          )}
+        >
+          {isHorizontalBar ? (
+            <GripHorizontal className="h-3 w-5 text-slate-400 group-hover:text-cyan-300 transition-colors" />
+          ) : (
+            <GripVertical className="h-5 w-3 text-slate-400 group-hover:text-cyan-300 transition-colors" />
+          )}
+        </div>
+      )}
+    </ResizablePrimitive.Separator>
+  );
+};
 
 export {
   ResizablePanelGroup,
