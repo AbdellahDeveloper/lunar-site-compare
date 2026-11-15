@@ -150,7 +150,6 @@ export const App: React.FC = () => {
     const leftTools = ['landing-sites', 'layer-management', 'coordinates', 'placemarks', 'graticule'];
     const rightTools = [
       'measurements',
-      'sight-lines',
       'polar-sky',
       'monte-carlo',
       'places-of-interest',
@@ -166,9 +165,6 @@ export const App: React.FC = () => {
     } else if (rightTools.includes(toolId)) {
       rightPanelRef.current?.expand();
       setIsRightCollapsed(false);
-      if (toolId === 'sight-lines') {
-        setShowSightlines(true);
-      }
     } else if (toolId === 'search-lunar') {
       setIsPicking3DLocation(true);
       setIsDrawingRoi(false);
@@ -730,8 +726,6 @@ export const App: React.FC = () => {
                   activeTool={activeTool}
                   isCollapsed={isRightCollapsed}
                   onToggleCollapse={toggleRightCollapse}
-                  showSightlines={showSightlines}
-                  onToggleSightlines={() => setShowSightlines((p) => !p)}
                   showSunOrbit={showSunOrbit}
                   onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
                   showEarthOrbit={showEarthOrbit}

@@ -2,7 +2,6 @@ import React, { useRef } from 'react';
 import {
   Layers,
   Compass,
-  Eye,
   Rocket,
   Camera,
   Search,
@@ -56,15 +55,6 @@ export const RIBBON_TOOLS: RibbonTool[] = [
     targetDescription: 'Selenocentric lat/lon, polar stereographic projection, distance and azimuth bearing',
     category: 'GIS & Mapping',
     badgeText: 'Coords',
-  },
-  {
-    id: 'sight-lines',
-    label: 'Sight Lines',
-    icon: Eye,
-    targetPanel: 'right',
-    targetDescription: 'Toggle direct 3D line-of-sight rays to Sun and Earth, orbital trails, and line-of-sight status',
-    category: 'Telemetry & Analysis',
-    badgeText: '3D Rays',
   },
   {
     id: 'landing-sites',

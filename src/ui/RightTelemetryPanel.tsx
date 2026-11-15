@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Radio,
-  Eye,
   Camera,
   Globe,
   Sun,
@@ -51,8 +50,6 @@ interface RightTelemetryPanelProps {
   onToggleCollapse: () => void;
 
   // 3D Viewport Controls & Camera
-  showSightlines: boolean;
-  onToggleSightlines: () => void;
   showSunOrbit: boolean;
   onToggleSunOrbit: () => void;
   showEarthOrbit: boolean;
@@ -85,8 +82,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   onScrub,
   isCollapsed,
   onToggleCollapse,
-  showSightlines,
-  onToggleSightlines,
   showSunOrbit,
   onToggleSunOrbit,
   showEarthOrbit,
@@ -247,21 +242,18 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
   };
 
   // Determine current active section for Right Sidebar
-  const isSightlinesMode = activeTool === 'sight-lines';
   const isPolarSkyMode = activeTool === 'polar-sky';
   const isMonteCarloMode = activeTool === 'monte-carlo';
   const isCameraMode = activeTool === 'places-of-interest';
   const isShadingMode = activeTool === 'moon-shading';
   const isTelemetryMode =
     activeTool === 'measurements' ||
-    (!isSightlinesMode &&
-      !isPolarSkyMode &&
+    (!isPolarSkyMode &&
       !isMonteCarloMode &&
       !isCameraMode &&
       !isShadingMode);
 
   const getSectionTitle = () => {
-    if (isSightlinesMode) return 'Sight Lines & Rays';
     if (isPolarSkyMode) return 'Polar Sky Plot';
     if (isMonteCarloMode) return 'Monte Carlo Risk';
     if (isCameraMode) return 'Camera Presets';
@@ -295,7 +287,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* Minimalist Section Header */}
           <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
             <div className="flex items-center gap-1.5">
-              {isSightlinesMode && <Eye className="w-3.5 h-3.5 text-amber-400" />}
               {isPolarSkyMode && <Disc className="w-3.5 h-3.5 text-cyan-400" />}
               {isMonteCarloMode && <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />}
               {isCameraMode && <Camera className="w-3.5 h-3.5 text-cyan-400" />}
@@ -306,9 +297,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
               </span>
               <InfoTooltip
                 text={
-                  isSightlinesMode
-                    ? 'Line-of-sight laser rays and apparent celestial ephemeris trails.'
-                    : isPolarSkyMode
+                  isPolarSkyMode
                     ? 'Polar radar azimuth-elevation projection with local terrain occlusion.'
                     : isMonteCarloMode
                     ? '120-run stochastic landing dispersion assessment.'
@@ -323,55 +312,7 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           </div>
 
 
-          {/* ============================================================== */}
-          {/* 2. SIGHT LINES & 3D RAYS                                       */}
-          {/* ============================================================== */}
-          {isSightlinesMode && (
-            <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
-              <span className="text-[10px] text-slate-400 uppercase">3D RAY TOGGLES</span>
 
-              <Card className="p-2.5 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-200 flex items-center gap-1">
-                  Direct 3D Sightlines
-                  <InfoTooltip text="Laser rays from site directly connecting to Sun and Earth positions." />
-                </span>
-                <Switch checked={showSightlines} onCheckedChange={onToggleSightlines} />
-              </Card>
-
-              <Card className="p-2.5 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-200 flex items-center gap-1">
-                  Sun Ephemeris Orbit
-                  <InfoTooltip text="Apparent 3D solar trajectory path in the local lunar sky." />
-                </span>
-                <Switch checked={showSunOrbit} onCheckedChange={onToggleSunOrbit} />
-              </Card>
-
-              <Card className="p-2.5 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-200 flex items-center gap-1">
-                  Earth Libration Path
-                  <InfoTooltip text="Apparent 3D Earth position ellipse over the synodic month." />
-                </span>
-                <Switch checked={showEarthOrbit} onCheckedChange={onToggleEarthOrbit} />
-              </Card>
-
-              {/* Geometric Line of Sight Status */}
-              <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800 text-[11px]">
-                <span className="text-[10px] text-slate-400 uppercase">RAY STATUS (SITE A)</span>
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-solar-gold font-bold">Sun Vector</span>
-                  <Badge variant={currentPointA.sun.isVisible ? 'optimal' : 'destructive'} className="text-[9px] py-0 h-4">
-                    {currentPointA.sun.isVisible ? 'CLEAR LOS' : 'OCCLUDED'}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-space-900/80 rounded border border-slate-800">
-                  <span className="text-cyan-400 font-bold">Earth Direct Link</span>
-                  <Badge variant={currentPointA.earth.isVisible ? 'optimal' : 'destructive'} className="text-[9px] py-0 h-4">
-                    {currentPointA.earth.isVisible ? 'LINK ACQUIRED' : 'BLOCKED'}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          )}
 
 
           {/* ============================================================== */}
