@@ -605,8 +605,8 @@ export const App: React.FC = () => {
               <ResizablePanel
                 panelRef={leftPanelRef}
                 id="left-sidebar"
-                defaultSize="20%"
-                minSize={260}
+                defaultSize="22%"
+                minSize={280}
                 maxSize={550}
                 collapsible={true}
                 collapsedSize={40}
@@ -720,9 +720,9 @@ export const App: React.FC = () => {
               <ResizablePanel
                 panelRef={rightPanelRef}
                 id="right-sidebar"
-                defaultSize="22%"
-                minSize={260}
-                maxSize={600}
+                defaultSize="28%"
+                minSize={330}
+                maxSize={650}
                 collapsible={true}
                 collapsedSize={40}
                 onResize={() => {

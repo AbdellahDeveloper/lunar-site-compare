@@ -315,23 +315,23 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = React.memo(({
               {/* Compact Metrics Card */}
               <Card className="bg-space-900/80 border-slate-800">
                 <CardHeader className="p-2.5 pb-1">
-                  <CardTitle className="text-[10px] text-slate-400 flex items-center justify-between font-mono">
-                    <span className="flex items-center gap-1">
+                  <CardTitle className="text-[10px] text-slate-400 flex items-center justify-between font-mono gap-1 whitespace-nowrap">
+                    <span className="flex items-center gap-1 shrink-0">
                       COORDINATES
                       <InfoTooltip text="Latitude and Longitude in Selenocentric IAU reference system." />
                     </span>
-                    <span className="text-cyan-300 font-bold">
+                    <span className="text-cyan-300 font-bold shrink-0">
                       {Math.abs(activeSite.lat).toFixed(3)}°S, {activeSite.lon.toFixed(3)}°E
                     </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-2.5 pt-1 flex flex-col gap-1.5 text-xs font-mono">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 flex items-center gap-1">
+                  <div className="flex items-center justify-between text-[11px] whitespace-nowrap gap-1">
+                    <span className="text-slate-400 flex items-center gap-1 shrink-0">
                       ELEVATION
                       <InfoTooltip text="Height relative to lunar mean spherical radius 1,737.4 km." />
                     </span>
-                    <span className="text-slate-200">
+                    <span className="text-slate-200 shrink-0 font-bold">
                       {activeSite.elevKm >= 0 ? '+' : ''}{activeSite.elevKm.toFixed(2)} km
                     </span>
                   </div>

@@ -189,13 +189,13 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
           <div className="flex flex-col gap-2.5">
             {/* 1. Solar Power */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-solar-gold font-bold">
-                  <Sun className="w-3.5 h-3.5" />
-                  Solar Power (Daylight)
+              <div className="flex items-center justify-between text-xs gap-2">
+                <span className="flex items-center gap-1.5 text-solar-gold font-bold whitespace-nowrap truncate">
+                  <Sun className="w-3.5 h-3.5 shrink-0" />
+                  Solar Daylight
                 </span>
                 <Badge
-                  className={`text-[9px] py-0 h-4 font-bold ${
+                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
                     sunWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : sunWinner === 'B'
@@ -207,26 +207,26 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site A:</span>
-                  <span className="font-bold text-cyan-300">{sunDaysA.toFixed(1)} Days</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site A:</span>
+                  <span className="font-bold text-cyan-300 ml-1 truncate">{sunDaysA.toFixed(1)} Days</span>
                 </div>
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site B:</span>
-                  <span className="font-bold text-amber-300">{sunDaysB.toFixed(1)} Days</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site B:</span>
+                  <span className="font-bold text-amber-300 ml-1 truncate">{sunDaysB.toFixed(1)} Days</span>
                 </div>
               </div>
             </Card>
 
             {/* 2. Earth Signal */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-cyan-400 font-bold">
-                  <Radio className="w-3.5 h-3.5" />
-                  Earth Wi-Fi / Radio Contact
+              <div className="flex items-center justify-between text-xs gap-2">
+                <span className="flex items-center gap-1.5 text-cyan-400 font-bold whitespace-nowrap truncate">
+                  <Radio className="w-3.5 h-3.5 shrink-0" />
+                  Earth Contact
                 </span>
                 <Badge
-                  className={`text-[9px] py-0 h-4 font-bold ${
+                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
                     earthWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : earthWinner === 'B'
@@ -238,26 +238,26 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site A:</span>
-                  <span className="font-bold text-cyan-300">{earthPercentA.toFixed(0)}% Contact</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site A:</span>
+                  <span className="font-bold text-cyan-300 ml-1 truncate">{earthPercentA.toFixed(0)}%</span>
                 </div>
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site B:</span>
-                  <span className="font-bold text-amber-300">{earthPercentB.toFixed(0)}% Contact</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site B:</span>
+                  <span className="font-bold text-amber-300 ml-1 truncate">{earthPercentB.toFixed(0)}%</span>
                 </div>
               </div>
             </Card>
 
             {/* 3. Water Ice Access */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-teal-400 font-bold">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Water Ice (Frozen Crater)
+              <div className="flex items-center justify-between text-xs gap-2">
+                <span className="flex items-center gap-1.5 text-teal-400 font-bold whitespace-nowrap truncate">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  Water Ice Access
                 </span>
                 <Badge
-                  className={`text-[9px] py-0 h-4 font-bold ${
+                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
                     iceWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : iceWinner === 'B'
@@ -269,26 +269,26 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site A:</span>
-                  <span className="font-bold text-cyan-300">{iceDistA.toFixed(1)} km</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site A:</span>
+                  <span className="font-bold text-cyan-300 ml-1 truncate">{iceDistA.toFixed(1)} km</span>
                 </div>
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site B:</span>
-                  <span className="font-bold text-amber-300">{iceDistB.toFixed(1)} km</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site B:</span>
+                  <span className="font-bold text-amber-300 ml-1 truncate">{iceDistB.toFixed(1)} km</span>
                 </div>
               </div>
             </Card>
 
             {/* 4. Landing Safety */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Landing Flatness & Safety
+              <div className="flex items-center justify-between text-xs gap-2">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold whitespace-nowrap truncate">
+                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  Terrain Flatness
                 </span>
                 <Badge
-                  className={`text-[9px] py-0 h-4 font-bold ${
+                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
                     slopeWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : slopeWinner === 'B'
@@ -300,13 +300,13 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site A:</span>
-                  <span className="font-bold text-cyan-300">{slopeA.toFixed(1)}° Slope</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site A:</span>
+                  <span className="font-bold text-cyan-300 ml-1 truncate">{slopeA.toFixed(1)}°</span>
                 </div>
-                <div className="flex items-center justify-between p-1 bg-space-950/70 rounded border border-slate-800">
-                  <span className="text-slate-400">Site B:</span>
-                  <span className="font-bold text-amber-300">{slopeB.toFixed(1)}° Slope</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
+                  <span className="text-slate-400 shrink-0">Site B:</span>
+                  <span className="font-bold text-amber-300 ml-1 truncate">{slopeB.toFixed(1)}°</span>
                 </div>
               </div>
             </Card>
@@ -314,12 +314,12 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
 
           {/* Grand Verdict Card */}
           <div className="p-3.5 rounded-xl bg-gradient-to-br from-space-900 via-space-950 to-slate-900 border-2 border-emerald-500/40 shadow-lg flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5 uppercase">
-                <Trophy className="w-4 h-4 text-solar-gold" />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5 uppercase whitespace-nowrap">
+                <Trophy className="w-4 h-4 text-solar-gold shrink-0" />
                 Overall Winner
               </span>
-              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold text-[10px]">
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold text-[10px] h-5 px-2 whitespace-nowrap shrink-0">
                 {overallWinner === 'TIE' ? 'BALANCED MATCH' : `SITE ${overallWinner} WINS (${Math.max(winsA, winsB)}/4)`}
               </Badge>
             </div>
