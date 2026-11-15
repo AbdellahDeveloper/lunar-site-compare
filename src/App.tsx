@@ -18,6 +18,7 @@ import {
   UIMode
 } from './types';
 import { AlternativesModal } from './ui/AlternativesModal';
+import { AstronautBadgeModal } from './ui/AstronautBadgeModal';
 import { CesiumLunarViewport, CesiumViewportHandle } from './ui/CesiumLunarViewport';
 import { DesignateSiteModal } from './ui/DesignateSiteModal';
 import { ExportModal } from './ui/ExportModal';
@@ -30,6 +31,7 @@ import { NasaTimelineScrubber } from './ui/NasaTimelineScrubber';
 import { RightTelemetryPanel } from './ui/RightTelemetryPanel';
 import { RoiDrawingHud } from './ui/RoiDrawingHud';
 import { RoiSearchModal } from './ui/RoiSearchModal';
+import { SimpleHeadToHeadPanel } from './ui/SimpleHeadToHeadPanel';
 import { SlipTable } from './ui/SlipTable';
 import { TopToolRibbon } from './ui/TopToolRibbon';
 
@@ -103,6 +105,8 @@ export const App: React.FC = () => {
   const [showLearnTourModal, setShowLearnTourModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showMissionOverviewModal, setShowMissionOverviewModal] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
+  const [selectedBadgeSite, setSelectedBadgeSite] = useState<Site>(siteA);
 
   // 3D Direct Surface Picking Mode
   const [isPicking3DLocation, setIsPicking3DLocation] = useState(false);
@@ -173,6 +177,12 @@ export const App: React.FC = () => {
       setOptimalRoiResult(null);
     } else if (toolId === 'hls-overview') {
       setShowMissionOverviewModal(true);
+    } else if (toolId === 'head-to-head') {
+      rightPanelRef.current?.expand();
+      setIsRightCollapsed(false);
+    } else if (toolId === 'my-badge') {
+      setSelectedBadgeSite(siteA);
+      setShowBadgeModal(true);
     }
   };
 
@@ -560,6 +570,7 @@ export const App: React.FC = () => {
 
       {/* Top Tool Ribbon (Celestial Mapping System Card Toolbar) */}
       <TopToolRibbon
+        uiMode={uiMode}
         activeTool={activeTool}
         onSelectTool={handleSelectTool}
         showGraticule={showGraticule}
@@ -635,6 +646,7 @@ export const App: React.FC = () => {
                 {/* Floating HUD for Active ROI Drawing Mode */}
                 {isDrawingRoi && (
                   <RoiDrawingHud
+                    uiMode={uiMode}
                     pointsCount={roiPolygon.length}
                     isOptimizing={isOptimizingRoi}
                     onOptimize={handleRunRoiOptimization}
@@ -705,40 +717,67 @@ export const App: React.FC = () => {
                 }}
                 className="transition-all duration-150"
               >
-                <RightTelemetryPanel
-                  uiMode={uiMode}
-                  siteA={siteA}
-                  siteB={siteB}
-                  evaluationA={evaluationA}
-                  evaluationB={evaluationB}
-                  currentPointA={currentPointA}
-                  currentPointB={currentPointB}
-                  allPointsA={evaluationA.points}
-                  allPointsB={evaluationB.points}
-                  maskA={maskA}
-                  monteCarloA={monteCarloA}
-                  slipCasesA={slipCasesA}
-                  windowStartMs={windowStartMs}
-                  windowEndMs={windowEndMs}
-                  onScrub={setCurrentScrubMs}
-                  activeTool={activeTool}
-                  isCollapsed={isRightCollapsed}
-                  onToggleCollapse={toggleRightCollapse}
-                  showSunOrbit={showSunOrbit}
-                  onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
-                  showEarthOrbit={showEarthOrbit}
-                  onToggleEarthOrbit={() => setShowEarthOrbit((p) => !p)}
-                  autoSpin={autoSpin}
-                  onToggleAutoSpin={() => setAutoSpin((p) => !p)}
-                  spinSpeedIndex={spinSpeedIndex}
-                  onSetSpinSpeedIndex={setSpinSpeedIndex}
-                  onFlyToSouthPole={() => cesiumViewportRef.current?.flyToSouthPole()}
-                  onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
-                  onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
-                  onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
-                  onFlyToMoonSystemFocus={() => cesiumViewportRef.current?.flyToMoonSystemFocus()}
-                  onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
-                />
+                {uiMode === 'simple' ? (
+                  <SimpleHeadToHeadPanel
+                    siteA={siteA}
+                    siteB={siteB}
+                    evaluationA={evaluationA}
+                    evaluationB={evaluationB}
+                    currentPointA={currentPointA}
+                    currentPointB={currentPointB}
+                    onSelectSiteA={setSiteA}
+                    onSelectSiteB={setSiteB}
+                    onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
+                    onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
+                    onClaimBadge={(site) => {
+                      setSelectedBadgeSite(site);
+                      setShowBadgeModal(true);
+                    }}
+                    onStartFindMyBase={() => {
+                      setIsDrawingRoi(true);
+                      setIsPicking3DLocation(false);
+                      setRoiPolygon([]);
+                      setOptimalRoiResult(null);
+                    }}
+                    isCollapsed={isRightCollapsed}
+                    onToggleCollapse={toggleRightCollapse}
+                  />
+                ) : (
+                  <RightTelemetryPanel
+                    uiMode={uiMode}
+                    siteA={siteA}
+                    siteB={siteB}
+                    evaluationA={evaluationA}
+                    evaluationB={evaluationB}
+                    currentPointA={currentPointA}
+                    currentPointB={currentPointB}
+                    allPointsA={evaluationA.points}
+                    allPointsB={evaluationB.points}
+                    maskA={maskA}
+                    monteCarloA={monteCarloA}
+                    slipCasesA={slipCasesA}
+                    windowStartMs={windowStartMs}
+                    windowEndMs={windowEndMs}
+                    onScrub={setCurrentScrubMs}
+                    activeTool={activeTool}
+                    isCollapsed={isRightCollapsed}
+                    onToggleCollapse={toggleRightCollapse}
+                    showSunOrbit={showSunOrbit}
+                    onToggleSunOrbit={() => setShowSunOrbit((p) => !p)}
+                    showEarthOrbit={showEarthOrbit}
+                    onToggleEarthOrbit={() => setShowEarthOrbit((p) => !p)}
+                    autoSpin={autoSpin}
+                    onToggleAutoSpin={() => setAutoSpin((p) => !p)}
+                    spinSpeedIndex={spinSpeedIndex}
+                    onSetSpinSpeedIndex={setSpinSpeedIndex}
+                    onFlyToSouthPole={() => cesiumViewportRef.current?.flyToSouthPole()}
+                    onFlyToSiteA={() => cesiumViewportRef.current?.flyToSiteA()}
+                    onFlyToSiteB={() => cesiumViewportRef.current?.flyToSiteB()}
+                    onFlyToOrbitalVista={() => cesiumViewportRef.current?.flyToOrbitalVista()}
+                    onFlyToMoonSystemFocus={() => cesiumViewportRef.current?.flyToMoonSystemFocus()}
+                    onFitMoon={() => cesiumViewportRef.current?.handleFitMoon()}
+                  />
+                )}
               </ResizablePanel>
             </ResizablePanelGroup>
           </ResizablePanel>
@@ -878,6 +917,15 @@ export const App: React.FC = () => {
           onSetLocationB={handleApplyRoiSiteToB}
           onRedraw={handleRedrawRoi}
           onClose={() => setShowRoiResultModal(false)}
+        />
+      )}
+
+      {/* Collectible Astronaut Commander Lunar Base Badge Modal */}
+      {showBadgeModal && (
+        <AstronautBadgeModal
+          site={selectedBadgeSite}
+          evaluation={selectedBadgeSite.id === siteB.id ? evaluationB : evaluationA}
+          onClose={() => setShowBadgeModal(false)}
         />
       )}
     </div>

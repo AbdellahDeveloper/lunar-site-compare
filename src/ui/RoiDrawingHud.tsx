@@ -1,10 +1,12 @@
 import { Badge, Button } from '@/components/ui';
 import { RotateCcw, Sparkles, X } from 'lucide-react';
 import React from 'react';
+import { UIMode } from '@/types';
 
 interface RoiDrawingHudProps {
   pointsCount: number;
   isOptimizing: boolean;
+  uiMode?: UIMode;
   onOptimize: () => void;
   onClear: () => void;
   onCancel: () => void;
@@ -13,11 +15,13 @@ interface RoiDrawingHudProps {
 export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
   pointsCount,
   isOptimizing,
+  uiMode = 'detailed',
   onOptimize,
   onClear,
   onCancel,
 }) => {
   const canOptimize = pointsCount >= 3;
+  const isSimple = uiMode === 'simple';
 
   return (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
@@ -29,16 +33,16 @@ export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-bold text-cyan-300 text-xs">
-                ROI Search
+                {isSimple ? 'Find My Base' : 'ROI Search'}
               </span>
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-cyan-950/50 text-cyan-400 border-cyan-500/30">
                 {pointsCount} {pointsCount === 1 ? 'pt' : 'pts'}
               </Badge>
             </div>
             <p className="text-slate-400 text-[10px] leading-tight">
-              {pointsCount === 0 && 'Click Moon surface to outline area.'}
+              {pointsCount === 0 && (isSimple ? 'Click Moon surface to outline your base.' : 'Click Moon surface to outline area.')}
               {pointsCount > 0 && pointsCount < 3 && `Add ${3 - pointsCount} more pt${3 - pointsCount > 1 ? 's' : ''}.`}
-              {canOptimize && 'Polygon closed. Ready to search.'}
+              {canOptimize && (isSimple ? 'Area ready! Click Find Base.' : 'Polygon closed. Ready to search.')}
             </p>
           </div>
         </div>
@@ -56,12 +60,12 @@ export const RoiDrawingHud: React.FC<RoiDrawingHudProps> = ({
             {isOptimizing ? (
               <>
                 <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1" />
-                Searching...
+                {isSimple ? 'Finding Base...' : 'Searching...'}
               </>
             ) : (
               <>
                 <Sparkles className="w-3 h-3 mr-1 text-cyan-200" />
-                Search Site
+                {isSimple ? 'Find Base' : 'Search Site'}
               </>
             )}
           </Button>

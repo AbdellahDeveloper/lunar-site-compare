@@ -13,9 +13,11 @@ import {
   Rocket,
   ShieldAlert,
   Sparkles,
-  Sun
+  Sun,
+  Trophy,
 } from 'lucide-react';
 import React, { useRef } from 'react';
+import { UIMode } from '../types';
 
 export interface RibbonTool {
   id: string;
@@ -26,6 +28,54 @@ export interface RibbonTool {
   category: 'GIS & Mapping' | 'Telemetry & Analysis' | 'Mission Planning';
   badgeText?: string;
 }
+
+export const SIMPLE_RIBBON_TOOLS: RibbonTool[] = [
+  {
+    id: 'roi-optimizer',
+    label: 'Find My Base',
+    icon: Sparkles,
+    targetPanel: 'viewport',
+    targetDescription: 'Draw a shape on the Moon to discover the optimal Artemis base location',
+    category: 'Mission Planning',
+    badgeText: 'Draw Tool',
+  },
+  {
+    id: 'landing-sites',
+    label: 'Choose Sites',
+    icon: Rocket,
+    targetPanel: 'left',
+    targetDescription: 'Select Artemis candidate locations for Site A and Site B',
+    category: 'Mission Planning',
+    badgeText: 'Sites A/B',
+  },
+  {
+    id: 'head-to-head',
+    label: 'Base Face-Off',
+    icon: Trophy,
+    targetPanel: 'right',
+    targetDescription: 'Head-to-head battle comparing solar power, radio link, water ice, and overall winner',
+    category: 'Telemetry & Analysis',
+    badgeText: 'Versus',
+  },
+  {
+    id: 'places-of-interest',
+    label: 'Camera Views',
+    icon: Camera,
+    targetPanel: 'right',
+    targetDescription: 'Jump camera directly to Site A, Site B, or high-altitude orbital vista',
+    category: 'GIS & Mapping',
+    badgeText: '3D Views',
+  },
+  {
+    id: 'my-badge',
+    label: 'Claim Badge',
+    icon: Award,
+    targetPanel: 'modal',
+    targetDescription: 'View, customize, save, and share your official Artemis Astronaut Moon Base Badge',
+    category: 'Mission Planning',
+    badgeText: 'Badge',
+  },
+];
 
 export const RIBBON_TOOLS: RibbonTool[] = [
   {
@@ -142,14 +192,17 @@ interface TopToolRibbonProps {
   activeTool: string;
   onSelectTool: (toolId: string) => void;
   showGraticule?: boolean;
+  uiMode?: UIMode;
 }
 
 export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
   activeTool,
   onSelectTool,
   showGraticule = true,
+  uiMode = 'detailed',
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const activeTools = uiMode === 'simple' ? SIMPLE_RIBBON_TOOLS : RIBBON_TOOLS;
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
@@ -210,7 +263,7 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = ({
         className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {RIBBON_TOOLS.map((tool) => {
+        {activeTools.map((tool) => {
           const Icon = tool.icon;
           const isActive = activeTool === tool.id || (tool.id === 'graticule' && showGraticule);
 
