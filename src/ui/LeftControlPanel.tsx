@@ -427,40 +427,8 @@ export const LeftControlPanel: React.FC<LeftControlPanelProps> = ({
                 </div>
               </div>
 
-              {/* Scientific Hazards Switch List */}
+              {/* Geometric Guides */}
               <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase pt-1">SCIENTIFIC HAZARDS</span>
-
-                {/* LEND Ice Traps (Cyan) - Disabled by default */}
-                <Card className="p-2 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm" />
-                    <span>LEND Ice Traps (Cyan)</span>
-                    <InfoTooltip text="Water-equivalent hydrogen cold traps in Permanently Shadowed Regions (PSRs) at polar latitudes." />
-                  </span>
-                  <Switch checked={showIceOverlay} onCheckedChange={() => onToggleIceOverlay?.()} />
-                </Card>
-
-                {/* Diviner Rock Hazard (Amber) - Disabled by default */}
-                <Card className="p-2 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm" />
-                    <span>Diviner Rock Hazard (Amber)</span>
-                    <InfoTooltip text="Surface rock fraction abundance hazard heat map from LRO Diviner." />
-                  </span>
-                  <Switch checked={showRockOverlay} onCheckedChange={() => onToggleRockOverlay?.()} />
-                </Card>
-
-                {/* LOLA Slope Hazard (Magenta) - Disabled by default */}
-                <Card className="p-2 bg-space-900/60 border-slate-800 flex items-center justify-between">
-                  <span className="text-[11px] text-slate-200 flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-400 shadow-sm" />
-                    <span>LOLA Steep Slope (Magenta)</span>
-                    <InfoTooltip text="Terrain slopes > 15° exceeding lander tipping safety limits." />
-                  </span>
-                  <Switch checked={showSlopeOverlay} onCheckedChange={() => onToggleSlopeOverlay?.()} />
-                </Card>
-
                 <span className="text-[10px] text-slate-400 uppercase pt-1">GEOMETRIC GUIDES</span>
 
                 <Card className="p-2 bg-space-900/60 border-slate-800 flex items-center justify-between">
