@@ -21,6 +21,7 @@ import {
   Check,
   Award,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Button,
@@ -34,46 +35,70 @@ import {
 } from '@/components/ui';
 
 interface MissionOverviewModalProps {
-  site: Site;
-  evaluation: ScenarioEvaluation;
+  siteA: Site;
+  siteB?: Site;
+  evaluationA: ScenarioEvaluation;
+  evaluationB?: ScenarioEvaluation;
   startDateIso: string;
   windowDays: number;
-  onSelectSite: (site: Site) => void;
+  onSelectSiteA: (site: Site) => void;
+  onSelectSiteB?: (site: Site) => void;
   onClose: () => void;
 }
 
 export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
-  site,
-  evaluation,
+  siteA,
+  siteB,
+  evaluationA,
+  evaluationB,
   startDateIso,
   windowDays,
-  onSelectSite,
+  onSelectSiteA,
+  onSelectSiteB,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'scoring'>('overview');
   const [selectedPreset, setSelectedPreset] = useState<string>('balanced');
   const [weights, setWeights] = useState<MissionCriteriaWeights>({ ...DEFAULT_MISSION_WEIGHTS });
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
-  const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [pdfDownloadedSite, setPdfDownloadedSite] = useState<'A' | 'B' | null>(null);
 
-  const metrics = evaluation.metrics;
+  const metricsA = evaluationA.metrics;
+  const metricsB = evaluationB?.metrics;
   const windowHours = windowDays * 24;
 
-  // Evaluate current site score under active weights
-  const siteScore: SiteScoreResult = scoreSite(
-    site,
-    metrics.sunlightPercent,
-    metrics.earthVisPercent,
-    metrics.bothUpHours,
+  // Evaluate site scores under active weights
+  const siteScoreA: SiteScoreResult = scoreSite(
+    siteA,
+    metricsA.sunlightPercent,
+    metricsA.earthVisPercent,
+    metricsA.bothUpHours,
     windowHours,
     weights
   );
 
+  const siteScoreB: SiteScoreResult | null =
+    siteB && metricsB
+      ? scoreSite(
+          siteB,
+          metricsB.sunlightPercent,
+          metricsB.earthVisPercent,
+          metricsB.bothUpHours,
+          windowHours,
+          weights
+        )
+      : null;
+
   // HLS Landing Constraints Check
-  const isSlopeOptimal = site.slopeDeg <= 5.0;
-  const isSlopeAcceptable = site.slopeDeg <= 8.0;
-  const isBufferSafe = site.distanceToSteepTerrainM >= 100;
-  const isPsrWalkable = site.nearestPsrDistanceKm <= 2.0;
+  const isSlopeOptimalA = siteA.slopeDeg <= 5.0;
+  const isSlopeAcceptableA = siteA.slopeDeg <= 8.0;
+  const isBufferSafeA = siteA.distanceToSteepTerrainM >= 100;
+  const isPsrWalkableA = siteA.nearestPsrDistanceKm <= 2.0;
+
+  const isSlopeOptimalB = siteB ? siteB.slopeDeg <= 5.0 : false;
+  const isSlopeAcceptableB = siteB ? siteB.slopeDeg <= 8.0 : false;
+  const isBufferSafeB = siteB ? siteB.distanceToSteepTerrainM >= 100 : false;
+  const isPsrWalkableB = siteB ? siteB.nearestPsrDistanceKm <= 2.0 : false;
 
   const handleApplyPreset = (key: string) => {
     setSelectedPreset(key);
@@ -85,18 +110,28 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
     setWeights((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = (targetSite: 'A' | 'B') => {
     setIsPdfGenerating(true);
     try {
-      generateHlsMissionPdf({
-        site,
-        evaluation,
-        startDateIso,
-        windowDays,
-        siteScore,
-      });
-      setPdfDownloaded(true);
-      setTimeout(() => setPdfDownloaded(false), 3000);
+      if (targetSite === 'A') {
+        generateHlsMissionPdf({
+          site: siteA,
+          evaluation: evaluationA,
+          startDateIso,
+          windowDays,
+          siteScore: siteScoreA,
+        });
+      } else if (targetSite === 'B' && siteB && evaluationB && siteScoreB) {
+        generateHlsMissionPdf({
+          site: siteB,
+          evaluation: evaluationB,
+          startDateIso,
+          windowDays,
+          siteScore: siteScoreB,
+        });
+      }
+      setPdfDownloadedSite(targetSite);
+      setTimeout(() => setPdfDownloadedSite(null), 3000);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
     } finally {
@@ -111,7 +146,7 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
   return (
     <DialogContent
       onClose={onClose}
-      className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-space-950 border-slate-800 text-slate-100 font-mono shadow-2xl"
+      className="max-w-5xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-space-950 border-slate-800 text-slate-100 font-mono shadow-2xl"
     >
       {/* -------------------------------------------------------------------- */}
       {/* HEADER WITH DOWNLOAD PDF BUTTON & TAB SWITCHER                      */}
@@ -123,10 +158,10 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
           </div>
           <div className="min-w-0">
             <DialogTitle className="text-sm font-bold uppercase tracking-wider text-slate-100 truncate">
-              Artemis HLS Flight Overview
+              Artemis HLS Flight Overview (Site A vs Site B)
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-400 mt-0.5 truncate">
-              Human Landing System operational landing feasibility & constraints
+              Side-by-side Human Landing System operational landing feasibility & constraints
             </DialogDescription>
           </div>
         </div>
@@ -136,28 +171,46 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
           <Button
             variant="cyanPill"
             size="sm"
-            onClick={handleDownloadPdf}
+            onClick={() => handleDownloadPdf('A')}
             disabled={isPdfGenerating}
-            className="gap-1.5 font-bold shadow-md h-8 text-xs px-3"
-            title="Download executive NASA technical memorandum PDF report"
+            className="gap-1.5 font-bold shadow-md h-8 text-xs px-2.5"
+            title="Download executive NASA technical memorandum PDF report for Site A"
           >
-            {pdfDownloaded ? (
+            {pdfDownloadedSite === 'A' ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-300">Downloaded PDF</span>
-              </>
-            ) : isPdfGenerating ? (
-              <>
-                <Sparkles className="w-3.5 h-3.5 animate-spin" />
-                <span>Generating...</span>
+                <span className="text-emerald-300">Site A PDF</span>
               </>
             ) : (
               <>
                 <FileDown className="w-3.5 h-3.5" />
-                <span>Download PDF Report</span>
+                <span>PDF (Site A)</span>
               </>
             )}
           </Button>
+
+          {siteB && evaluationB && (
+            <Button
+              variant="amberPill"
+              size="sm"
+              onClick={() => handleDownloadPdf('B')}
+              disabled={isPdfGenerating}
+              className="gap-1.5 font-bold shadow-md h-8 text-xs px-2.5"
+              title="Download executive NASA technical memorandum PDF report for Site B"
+            >
+              {pdfDownloadedSite === 'B' ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Site B PDF</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>PDF (Site B)</span>
+                </>
+              )}
+            </Button>
+          )}
 
           {/* Tab Switch */}
           <div className="flex items-center gap-1 bg-space-950 p-0.5 rounded-lg border border-slate-800">
@@ -185,288 +238,344 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
         {activeTab === 'overview' ? (
           <>
             {/* ---------------------------------------------------------------- */}
-            {/* 1. SIMPLIFIED EXECUTIVE HERO CARD                                */}
+            {/* 1. DUAL EXECUTIVE HERO CARDS (SITE A & SITE B SIDE-BY-SIDE)      */}
             {/* ---------------------------------------------------------------- */}
-            <div className="bg-space-900/90 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-4 shadow-sm">
-              <div className="flex flex-col gap-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <Badge variant="amber" className="text-[10px] uppercase font-bold px-1.5 py-0">
-                    {site.artemisRegionCode ? `REGION ${site.artemisRegionCode}` : 'ARTEMIS III'}
-                  </Badge>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {site.regionName || 'South Polar Cluster'}
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Site A Executive Card */}
+              <div className="bg-space-900/90 p-3.5 rounded-xl border border-cyan-500/30 flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="cyan" className="text-[9px] uppercase font-bold px-1 py-0">
+                      SITE A
+                    </Badge>
+                    <span className="text-[11px] text-slate-400 font-mono truncate">
+                      {siteA.regionName || siteA.artemisRegionCode || 'Region A'}
+                    </span>
+                  </div>
+                  <h2 className="text-base font-bold text-cyan-300 truncate mt-0.5" title={siteA.name}>
+                    {siteA.name.split('(')[0].trim()}
+                  </h2>
+                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span>{Math.abs(siteA.lat).toFixed(3)}°S, {siteA.lon.toFixed(3)}°E</span>
+                    <span>·</span>
+                    <span>Elev: {siteA.elevKm >= 0 ? '+' : ''}{siteA.elevKm.toFixed(2)} km</span>
+                    <span>·</span>
+                    <span>Slope: {siteA.slopeDeg.toFixed(1)}°</span>
+                  </div>
                 </div>
-                <h2 className="text-lg font-bold text-slate-100 truncate mt-0.5">
-                  {site.name.split('(')[0].trim()}
-                </h2>
-                <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
-                  <span>{Math.abs(site.lat).toFixed(4)}°S, {site.lon.toFixed(4)}°E</span>
-                  <span>·</span>
-                  <span>Elev: {site.elevKm >= 0 ? '+' : ''}{site.elevKm.toFixed(2)} km</span>
-                  <span>·</span>
-                  <span>Slope: {site.slopeDeg.toFixed(1)}°</span>
-                  <span>·</span>
-                  <span className="text-cyan-400">{startDateIso} ({windowDays}d / {windowHours}h)</span>
+
+                <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-space-950 border border-slate-800 min-w-[64px] shrink-0">
+                  <span className="text-[8px] text-slate-400 uppercase font-mono">SCORE</span>
+                  <span className="text-lg font-bold text-cyan-400 leading-tight">
+                    {siteScoreA.totalScore}
+                  </span>
+                  <span className="text-[8px] text-slate-500">/ 100</span>
                 </div>
               </div>
 
-              {/* Score & Verdict Pill */}
-              <div className="flex items-center gap-4 shrink-0 pl-4 border-l border-slate-800">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] text-slate-400 uppercase font-mono">FEASIBILITY TIER</span>
-                  <Badge
-                    variant={
-                      evaluation.verdict.tier === 'optimal'
-                        ? 'emerald'
-                        : evaluation.verdict.tier === 'viable'
-                        ? 'cyan'
-                        : 'critical'
-                    }
-                    className="text-xs px-2.5 py-1 mt-1 font-bold"
-                  >
-                    {evaluation.verdict.title}
-                  </Badge>
-                </div>
+              {/* Site B Executive Card */}
+              {siteB && evaluationB && siteScoreB ? (
+                <div className="bg-space-900/90 p-3.5 rounded-xl border border-amber-500/30 flex items-center justify-between gap-3 shadow-sm">
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="amber" className="text-[9px] uppercase font-bold px-1 py-0">
+                        SITE B
+                      </Badge>
+                      <span className="text-[11px] text-slate-400 font-mono truncate">
+                        {siteB.regionName || siteB.artemisRegionCode || 'Region B'}
+                      </span>
+                    </div>
+                    <h2 className="text-base font-bold text-amber-300 truncate mt-0.5" title={siteB.name}>
+                      {siteB.name.split('(')[0].trim()}
+                    </h2>
+                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span>{Math.abs(siteB.lat).toFixed(3)}°S, {siteB.lon.toFixed(3)}°E</span>
+                      <span>·</span>
+                      <span>Elev: {siteB.elevKm >= 0 ? '+' : ''}{siteB.elevKm.toFixed(2)} km</span>
+                      <span>·</span>
+                      <span>Slope: {siteB.slopeDeg.toFixed(1)}°</span>
+                    </div>
+                  </div>
 
-                <div className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-space-950 border border-slate-800 min-w-[76px]">
-                  <span className="text-[9px] text-slate-400 uppercase font-mono">SCORE</span>
-                  <span className="text-xl font-bold text-cyan-400 leading-tight">
-                    {siteScore.totalScore}
-                  </span>
-                  <span className="text-[9px] text-slate-500">/ 100</span>
+                  <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-space-950 border border-slate-800 min-w-[64px] shrink-0">
+                    <span className="text-[8px] text-slate-400 uppercase font-mono">SCORE</span>
+                    <span className="text-lg font-bold text-amber-400 leading-tight">
+                      {siteScoreB.totalScore}
+                    </span>
+                    <span className="text-[8px] text-slate-500">/ 100</span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-space-900/40 p-3.5 rounded-xl border border-dashed border-slate-800 flex items-center justify-center text-slate-500 text-xs">
+                  <span>No Site B selected for comparison</span>
+                </div>
+              )}
             </div>
 
             {/* ---------------------------------------------------------------- */}
-            {/* 2. THE FOUR SPACIOUS PRIMARY FEASIBILITY PILLARS (2x2 Grid)      */}
+            {/* 2. THE FOUR PRIMARY FEASIBILITY PILLARS (SITE A VS SITE B)       */}
             {/* ---------------------------------------------------------------- */}
-            <div className="grid grid-cols-2 gap-3.5">
-              {/* Pillar 1: Solar Power */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Pillar 1: Solar Power & Daylight */}
               <Card className="p-4 bg-space-900/80 border-slate-800 flex flex-col justify-between gap-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-amber-500/10 border border-amber-500/30">
-                      <Zap className="w-4 h-4 text-solar-gold" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase">Solar Power & Daylight</h4>
-                      <p className="text-[11px] text-slate-400">Photovoltaic surface power opportunity</p>
-                    </div>
-                  </div>
-                  <Badge variant={metrics.sunlightPercent >= 70 ? 'emerald' : 'amber'} className="text-[10px]">
-                    {metrics.sunlightPercent >= 70 ? 'Optimal' : 'Viable'}
-                  </Badge>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-2xl font-bold text-solar-gold">
-                      {metrics.sunlightPercent.toFixed(1)}%
-                    </span>
-                    <span className="text-xs text-slate-300 font-mono">
-                      {metrics.sunlightHours.toFixed(1)} hrs daylight
-                    </span>
-                  </div>
-                  {/* Progress Bar */}
-                  <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      className="bg-solar-gold h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, Math.max(0, metrics.sunlightPercent))}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">MAX DAYLIGHT:</span>
-                    <span className="font-bold text-solar-gold">
-                      {metrics.longestLightHours.toFixed(1)}h ({(metrics.longestLightHours / 24).toFixed(1)}d)
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+                    <Zap className="w-4 h-4 text-solar-gold" />
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">MAX NIGHT:</span>
-                    <span className="font-bold text-rose-400">
-                      {metrics.longestDarkHours.toFixed(1)}h ({(metrics.longestDarkHours / 24).toFixed(1)}d)
-                    </span>
+                    <h4 className="text-xs font-bold text-slate-200 uppercase">Solar Power & Daylight</h4>
+                    <p className="text-[11px] text-slate-400">Photovoltaic surface power opportunity</p>
                   </div>
                 </div>
-              </Card>
 
-              {/* Pillar 2: Earth Comms */}
-              <Card className="p-4 bg-space-900/80 border-slate-800 flex flex-col justify-between gap-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/30">
-                      <Radio className="w-4 h-4 text-cyan-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase">Direct-to-Earth Comms</h4>
-                      <p className="text-[11px] text-slate-400">Deep Space Network line-of-sight</p>
-                    </div>
-                  </div>
-                  <Badge variant={metrics.earthVisPercent >= 50 ? 'emerald' : 'cyan'} className="text-[10px]">
-                    {metrics.earthVisPercent >= 50 ? 'Nominal Link' : 'Periodic'}
-                  </Badge>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-2xl font-bold text-cyan-400">
-                      {metrics.earthVisPercent.toFixed(1)}%
-                    </span>
-                    <span className="text-xs text-slate-300 font-mono">
-                      {metrics.earthVisHours.toFixed(1)} hrs link up
+                {/* Site A Metric */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-cyan-300 font-bold text-[11px]">SITE A: {siteA.name.split('(')[0].trim()}</span>
+                    <span className="font-bold text-cyan-400">
+                      {metricsA.sunlightPercent.toFixed(1)}% ({metricsA.sunlightHours.toFixed(1)}h)
                     </span>
                   </div>
-                  {/* Progress Bar */}
                   <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
                     <div
                       className="bg-cyan-400 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, Math.max(0, metrics.earthVisPercent))}%` }}
+                      style={{ width: `${Math.min(100, Math.max(0, metricsA.sunlightPercent))}%` }}
                     />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                    <span>Max Daylight: {metricsA.longestLightHours.toFixed(1)}h</span>
+                    <span>Max Night: {metricsA.longestDarkHours.toFixed(1)}h</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">LONGEST OUTAGE:</span>
-                    <span className="font-bold text-amber-400">
-                      {metrics.longestEarthOutageHours.toFixed(1)}h ({(metrics.longestEarthOutageHours / 24).toFixed(1)}d)
-                    </span>
+                {/* Site B Metric (if present) */}
+                {siteB && metricsB && (
+                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-amber-300 font-bold text-[11px]">SITE B: {siteB.name.split('(')[0].trim()}</span>
+                      <span className="font-bold text-amber-400">
+                        {metricsB.sunlightPercent.toFixed(1)}% ({metricsB.sunlightHours.toFixed(1)}h)
+                      </span>
+                    </div>
+                    <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(0, metricsB.sunlightPercent))}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-400">
+                      <span>Max Daylight: {metricsB.longestLightHours.toFixed(1)}h</span>
+                      <span>Max Night: {metricsB.longestDarkHours.toFixed(1)}h</span>
+                    </div>
+                  </div>
+                )}
+              </Card>
+
+              {/* Pillar 2: Earth Direct Comms */}
+              <Card className="p-4 bg-space-900/80 border-slate-800 flex flex-col justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/30">
+                    <Radio className="w-4 h-4 text-cyan-400" />
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">JOINT POWER & COMMS:</span>
-                    <span className="font-bold text-emerald-400">
-                      {metrics.bothUpPercent.toFixed(1)}% ({metrics.bothUpHours.toFixed(1)}h)
-                    </span>
+                    <h4 className="text-xs font-bold text-slate-200 uppercase">Direct-to-Earth (DTE) Comms</h4>
+                    <p className="text-[11px] text-slate-400">Deep Space Network line-of-sight</p>
                   </div>
                 </div>
+
+                {/* Site A Metric */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-cyan-300 font-bold text-[11px]">SITE A: {siteA.name.split('(')[0].trim()}</span>
+                    <span className="font-bold text-cyan-400">
+                      {metricsA.earthVisPercent.toFixed(1)}% ({metricsA.earthVisHours.toFixed(1)}h)
+                    </span>
+                  </div>
+                  <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                    <div
+                      className="bg-cyan-400 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(100, Math.max(0, metricsA.earthVisPercent))}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] text-slate-400">
+                    <span>Longest Outage: {metricsA.longestEarthOutageHours.toFixed(1)}h</span>
+                    <span>Both-Up: {metricsA.bothUpHours.toFixed(1)}h</span>
+                  </div>
+                </div>
+
+                {/* Site B Metric (if present) */}
+                {siteB && metricsB && (
+                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-amber-300 font-bold text-[11px]">SITE B: {siteB.name.split('(')[0].trim()}</span>
+                      <span className="font-bold text-amber-400">
+                        {metricsB.earthVisPercent.toFixed(1)}% ({metricsB.earthVisHours.toFixed(1)}h)
+                      </span>
+                    </div>
+                    <div className="w-full bg-space-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="bg-amber-400 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(100, Math.max(0, metricsB.earthVisPercent))}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[10px] text-slate-400">
+                      <span>Longest Outage: {metricsB.longestEarthOutageHours.toFixed(1)}h</span>
+                      <span>Both-Up: {metricsB.bothUpHours.toFixed(1)}h</span>
+                    </div>
+                  </div>
+                )}
               </Card>
 
               {/* Pillar 3: Landing Slope & Safety */}
               <Card className="p-4 bg-space-900/80 border-slate-800 flex flex-col justify-between gap-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/30">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase">Landing Slope Safety</h4>
-                      <p className="text-[11px] text-slate-400">HLS tip-over stability & buffer</p>
-                    </div>
-                  </div>
-                  <Badge variant={isSlopeOptimal ? 'emerald' : isSlopeAcceptable ? 'amber' : 'critical'} className="text-[10px]">
-                    {isSlopeOptimal ? 'Pass (< 5.0°)' : isSlopeAcceptable ? 'Acceptable (< 8°)' : 'Fail (> 8°)'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-baseline justify-between">
-                  <span className={`text-2xl font-bold ${isSlopeOptimal ? 'text-emerald-400' : isSlopeAcceptable ? 'text-amber-400' : 'text-red-400'}`}>
-                    {site.slopeDeg.toFixed(1)}°
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    HLS Constraint: &lt; 5.0° (Max &lt; 8.0°)
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">STEEP TERRAIN BUFFER:</span>
-                    <span className={`font-bold ${isBufferSafe ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {site.distanceToSteepTerrainM} m {isBufferSafe ? '(Safe ≥ 100m)' : '(Too close)'}
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/30">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">LOLA CONFIDENCE:</span>
-                    <span className="font-bold text-slate-200">
-                      {site.terrainConfidence.toUpperCase()} (±{site.elevationUncertaintyM?.toFixed(2) || '0.35'}m Z)
-                    </span>
+                    <h4 className="text-xs font-bold text-slate-200 uppercase">Landing Slope Safety</h4>
+                    <p className="text-[11px] text-slate-400">HLS tip-over stability & safety buffer</p>
                   </div>
                 </div>
+
+                {/* Site A Slope */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-cyan-300 font-bold text-[11px]">SITE A: {siteA.name.split('(')[0].trim()}</span>
+                    <Badge variant={isSlopeOptimalA ? 'emerald' : isSlopeAcceptableA ? 'amber' : 'critical'} className="text-[9px]">
+                      {isSlopeOptimalA ? 'Optimal (< 5°)' : isSlopeAcceptableA ? 'Acceptable (< 8°)' : 'Hazard'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                    <span>Slope: <strong className="text-slate-100">{siteA.slopeDeg.toFixed(1)}°</strong></span>
+                    <span>Buffer: <strong className={isBufferSafeA ? 'text-emerald-400' : 'text-rose-400'}>{siteA.distanceToSteepTerrainM}m</strong></span>
+                    <span>Confidence: <strong>{siteA.terrainConfidence.toUpperCase()}</strong></span>
+                  </div>
+                </div>
+
+                {/* Site B Slope (if present) */}
+                {siteB && (
+                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-amber-300 font-bold text-[11px]">SITE B: {siteB.name.split('(')[0].trim()}</span>
+                      <Badge variant={isSlopeOptimalB ? 'emerald' : isSlopeAcceptableB ? 'amber' : 'critical'} className="text-[9px]">
+                        {isSlopeOptimalB ? 'Optimal (< 5°)' : isSlopeAcceptableB ? 'Acceptable (< 8°)' : 'Hazard'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-300">
+                      <span>Slope: <strong className="text-slate-100">{siteB.slopeDeg.toFixed(1)}°</strong></span>
+                      <span>Buffer: <strong className={isBufferSafeB ? 'text-emerald-400' : 'text-rose-400'}>{siteB.distanceToSteepTerrainM}m</strong></span>
+                      <span>Confidence: <strong>{siteB.terrainConfidence.toUpperCase()}</strong></span>
+                    </div>
+                  </div>
+                )}
               </Card>
 
               {/* Pillar 4: Science & PSR Exploration */}
               <Card className="p-4 bg-space-900/80 border-slate-800 flex flex-col justify-between gap-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/30">
-                      <Compass className="w-4 h-4 text-purple-400" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-slate-200 uppercase">Science & PSR Access</h4>
-                      <p className="text-[11px] text-slate-400">Permanently shadowed water ice</p>
-                    </div>
-                  </div>
-                  <Badge variant={isPsrWalkable ? 'emerald' : 'cyan'} className="text-[10px]">
-                    {isPsrWalkable ? 'Walkable EVA' : 'Rover Req.'}
-                  </Badge>
-                </div>
-
-                <div className="flex items-baseline justify-between">
-                  <span className="text-2xl font-bold text-purple-400">
-                    {site.nearestPsrDistanceKm.toFixed(1)} km
-                  </span>
-                  <span className="text-xs text-slate-300 truncate max-w-[170px]" title={site.psrName}>
-                    {site.psrName || 'Nearby Cold Trap'}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px] text-slate-300">
-                  <div>
-                    <span className="text-slate-500 block text-[10px]">EVA TRAVERSE LIMIT:</span>
-                    <span className={`font-bold ${isPsrWalkable ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {isPsrWalkable ? '≤ 2.0 km Walking Pass' : '> 2.0 km Needs Rover'}
-                    </span>
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-md bg-purple-500/10 border border-purple-500/30">
+                    <Compass className="w-4 h-4 text-purple-400" />
                   </div>
                   <div>
-                    <span className="text-slate-500 block text-[10px]">RESOURCE VALUE:</span>
-                    <span className="font-bold text-cyan-300">
-                      High Volatile Potential
-                    </span>
+                    <h4 className="text-xs font-bold text-slate-200 uppercase">Science & PSR Access</h4>
+                    <p className="text-[11px] text-slate-400">Permanently shadowed volatile cold traps</p>
                   </div>
                 </div>
+
+                {/* Site A PSR */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-cyan-300 font-bold text-[11px]">SITE A: {siteA.name.split('(')[0].trim()}</span>
+                    <Badge variant={isPsrWalkableA ? 'emerald' : 'cyan'} className="text-[9px]">
+                      {isPsrWalkableA ? 'Walkable EVA (≤ 2km)' : 'Rover Req.'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                    <span>Nearest Cold Trap: <strong className="text-purple-300">{siteA.nearestPsrDistanceKm.toFixed(1)} km</strong></span>
+                    <span className="text-slate-400 truncate max-w-[150px]" title={siteA.psrName}>{siteA.psrName || 'Cold Trap'}</span>
+                  </div>
+                </div>
+
+                {/* Site B PSR (if present) */}
+                {siteB && (
+                  <div className="flex flex-col gap-1 pt-2 border-t border-slate-800/80">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-amber-300 font-bold text-[11px]">SITE B: {siteB.name.split('(')[0].trim()}</span>
+                      <Badge variant={isPsrWalkableB ? 'emerald' : 'cyan'} className="text-[9px]">
+                        {isPsrWalkableB ? 'Walkable EVA (≤ 2km)' : 'Rover Req.'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-slate-300">
+                      <span>Nearest Cold Trap: <strong className="text-purple-300">{siteB.nearestPsrDistanceKm.toFixed(1)} km</strong></span>
+                      <span className="text-slate-400 truncate max-w-[150px]" title={siteB.psrName}>{siteB.psrName || 'Cold Trap'}</span>
+                    </div>
+                  </div>
+                )}
               </Card>
             </div>
 
             {/* ---------------------------------------------------------------- */}
-            {/* 3. SLEEK ARTEMIS III REGION SWITCHER                             */}
+            {/* 3. SLEEK ARTEMIS III REGION SELECTOR (SET AS SITE A OR B)         */}
             {/* ---------------------------------------------------------------- */}
             <div className="flex flex-col gap-2 pt-2 border-t border-slate-800">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase text-slate-400">
-                  Quick Switch: Artemis III Candidate Sites
+                  Switch Active Artemis Candidates
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  {artemisSites.length} official candidates
+                  Click to select site · choose A or B
                 </span>
               </div>
 
-              {/* Horizontal Scrollable Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {/* Horizontal Scrollable Site Cards */}
+              <div className="grid grid-cols-3 gap-2 pb-1">
                 {artemisSites.map((s) => {
-                  const isSelected = s.id === site.id;
+                  const isA = s.id === siteA.id;
+                  const isB = siteB && s.id === siteB.id;
+
                   return (
-                    <button
+                    <div
                       key={s.id}
-                      type="button"
-                      onClick={() => onSelectSite(s)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono whitespace-nowrap transition-all ${
-                        isSelected
-                          ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm'
-                          : 'bg-space-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white'
+                      className={`p-2.5 rounded-lg border text-xs flex flex-col justify-between gap-1.5 transition-colors ${
+                        isA
+                          ? 'border-cyan-400 bg-cyan-950/40 text-cyan-200 shadow-sm'
+                          : isB
+                          ? 'border-amber-400 bg-amber-950/40 text-amber-200 shadow-sm'
+                          : 'border-slate-800 bg-space-900/60 text-slate-300 hover:border-slate-700'
                       }`}
                     >
-                      <span className="font-bold">{s.regionName || s.name.split('(')[0].trim()}</span>
-                      <span
-                        className={`text-[10px] px-1 py-0.2 rounded ${
-                          s.slopeDeg <= 5.0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                        }`}
-                      >
-                        {s.slopeDeg.toFixed(1)}°
-                      </span>
-                    </button>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[11px] truncate" title={s.name}>
+                          {s.name.split('(')[0].trim()}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isA && <Badge variant="cyan" className="text-[8px] py-0 px-1">SITE A</Badge>}
+                          {isB && <Badge variant="amber" className="text-[8px] py-0 px-1">SITE B</Badge>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-800/60">
+                        <Button
+                          size="xs"
+                          variant={isA ? 'cyanPill' : 'outline'}
+                          onClick={() => onSelectSiteA(s)}
+                          className="h-5 text-[9px] px-1.5"
+                        >
+                          Set A
+                        </Button>
+                        {onSelectSiteB && (
+                          <Button
+                            size="xs"
+                            variant={isB ? 'amberPill' : 'outline'}
+                            onClick={() => onSelectSiteB(s)}
+                            className="h-5 text-[9px] px-1.5"
+                          >
+                            Set B
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -634,44 +743,77 @@ export const MissionOverviewModal: React.FC<MissionOverviewModalProps> = ({
               </div>
             </Card>
 
-            {/* Score Breakdown Footer */}
-            <div className="bg-space-900/90 p-4 rounded-xl border border-cyan-500/30 flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-xs text-slate-400 uppercase">Composite Weighted Viability Score</span>
-                <span className="text-2xl font-bold text-cyan-300 mt-1">
-                  {siteScore.totalScore} <span className="text-sm font-normal text-slate-400">/ 100</span>
-                </span>
-                <span className="text-xs text-emerald-400 font-bold mt-1">
-                  {siteScore.paretoStatus}
-                </span>
+            {/* Score Breakdown: Site A vs Site B Comparison Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Site A Breakdown */}
+              <div className="bg-space-900/90 p-3.5 rounded-xl border border-cyan-500/30 flex flex-col gap-2">
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                  <span className="text-xs font-bold text-cyan-300">SITE A: {siteA.name.split('(')[0].trim()}</span>
+                  <span className="text-base font-bold text-cyan-400">{siteScoreA.totalScore}/100</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">SOLAR:</span>
+                    <span className="font-bold text-solar-gold">{siteScoreA.breakdown.solarScore}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">EARTH:</span>
+                    <span className="font-bold text-cyan-400">{siteScoreA.breakdown.earthScore}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">BOTH-UP:</span>
+                    <span className="font-bold text-emerald-400">{siteScoreA.breakdown.jointScore}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">SLOPE:</span>
+                    <span className="font-bold text-purple-400">{siteScoreA.breakdown.slopeScore}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">CONFIDENCE:</span>
+                    <span className="font-bold text-slate-300">{siteScoreA.breakdown.confidenceScore}/100</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">PSR DIST:</span>
+                    <span className="font-bold text-blue-400">{siteScoreA.breakdown.psrScore}/100</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-xs text-right">
-                <div>
-                  <span className="text-slate-500 block text-[10px]">SOLAR:</span>
-                  <span className="font-bold text-solar-gold">{siteScore.breakdown.solarScore}/100</span>
+              {/* Site B Breakdown (if present) */}
+              {siteB && siteScoreB ? (
+                <div className="bg-space-900/90 p-3.5 rounded-xl border border-amber-500/30 flex flex-col gap-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800">
+                    <span className="text-xs font-bold text-amber-300">SITE B: {siteB.name.split('(')[0].trim()}</span>
+                    <span className="text-base font-bold text-amber-400">{siteScoreB.totalScore}/100</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">SOLAR:</span>
+                      <span className="font-bold text-solar-gold">{siteScoreB.breakdown.solarScore}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">EARTH:</span>
+                      <span className="font-bold text-cyan-400">{siteScoreB.breakdown.earthScore}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">BOTH-UP:</span>
+                      <span className="font-bold text-emerald-400">{siteScoreB.breakdown.jointScore}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">SLOPE:</span>
+                      <span className="font-bold text-purple-400">{siteScoreB.breakdown.slopeScore}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">CONFIDENCE:</span>
+                      <span className="font-bold text-slate-300">{siteScoreB.breakdown.confidenceScore}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">PSR DIST:</span>
+                      <span className="font-bold text-blue-400">{siteScoreB.breakdown.psrScore}/100</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">EARTH:</span>
-                  <span className="font-bold text-cyan-400">{siteScore.breakdown.earthScore}/100</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">BOTH-UP:</span>
-                  <span className="font-bold text-emerald-400">{siteScore.breakdown.jointScore}/100</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">SLOPE:</span>
-                  <span className="font-bold text-purple-400">{siteScore.breakdown.slopeScore}/100</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">CONFIDENCE:</span>
-                  <span className="font-bold text-slate-300">{siteScore.breakdown.confidenceScore}/100</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block text-[10px]">PSR DIST:</span>
-                  <span className="font-bold text-blue-400">{siteScore.breakdown.psrScore}/100</span>
-                </div>
-              </div>
+              ) : null}
             </div>
           </div>
         )}

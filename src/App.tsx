@@ -862,12 +862,17 @@ export const App: React.FC = () => {
 
       {showMissionOverviewModal && (
         <MissionOverviewModal
-          site={siteA}
-          evaluation={evaluationA}
+          siteA={siteA}
+          siteB={siteB}
+          evaluationA={evaluationA}
+          evaluationB={evaluationB}
           startDateIso={startDateIso}
           windowDays={windowDays}
-          onSelectSite={(newSite) => {
+          onSelectSiteA={(newSite) => {
             setSiteA(newSite);
+          }}
+          onSelectSiteB={(newSite) => {
+            setSiteB(newSite);
           }}
           onClose={() => setShowMissionOverviewModal(false)}
         />
