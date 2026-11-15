@@ -112,21 +112,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     return `${hours}h ${mins}m`;
   };
 
-  const getVerdictVariant = (tier: string) => {
-    switch (tier) {
-      case 'optimal':
-        return 'optimal';
-      case 'viable':
-        return 'viable';
-      case 'constrained':
-        return 'constrained';
-      default:
-        return 'critical';
-    }
-  };
-
-  const [telemetryFilter, setTelemetryFilter] = useState<'both' | 'A' | 'B'>('both');
-
   const getSunRemainingMs = (point: EphemerisPoint, evalData: ScenarioEvaluation): number | null => {
     if (point.sun.isVisible) {
       const curInt = evalData.sunIntervals.find((i) => point.timeMs >= i.startMs && point.timeMs <= i.endMs);
@@ -155,18 +140,15 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
     onFlyTo?: () => void
   ) => {
     const isA = siteTag === 'A';
-    const accentBorder = isA
-      ? 'border-cyan-500/30 bg-space-900/90'
-      : 'border-amber-500/30 bg-space-900/90';
     const textAccent = isA ? 'text-cyan-300' : 'text-amber-300';
     const badgeVariant = isA ? 'cyan' : 'amber';
     const sunRemaining = getSunRemainingMs(point, evaluation);
     const earthRemaining = getEarthRemainingMs(point, evaluation);
 
     return (
-      <div key={siteTag} className={`p-2.5 rounded-lg border ${accentBorder} flex flex-col gap-2 font-mono shadow-sm`}>
-        {/* Site Header: Label, Name, Jump, Feasibility */}
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
+      <div key={siteTag} className="flex flex-col gap-2 font-mono">
+        {/* Site Header: Label, Name, Jump */}
+        <div className="flex items-center justify-between pb-1 border-b border-slate-800/80 text-xs">
           <div className="flex items-center gap-1.5 min-w-0">
             <Badge variant={badgeVariant} className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
               SITE {siteTag}
@@ -187,9 +169,6 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
               </button>
             )}
           </div>
-          <Badge variant={getVerdictVariant(evaluation.verdict.tier)} className="text-[9px] shrink-0">
-            {evaluation.verdict.title}
-          </Badge>
         </div>
 
         {/* Real-time Countdowns */}
@@ -556,9 +535,9 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* 7. SOLAR ILLUMINATION & MOON SHADING                          */}
           {/* ============================================================== */}
           {isShadingMode && (
-            <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
+            <div className="flex flex-col gap-3 animate-fade-in font-mono">
               {/* Site A Shading Card */}
-              <div className="p-2.5 bg-space-900/90 rounded-lg border border-cyan-500/30 flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
                   <div className="flex items-center gap-1.5 min-w-0">
                     <Badge variant="cyan" className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
@@ -596,41 +575,44 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
 
               {/* Site B Shading Card */}
               {siteB && evaluationB && currentPointB && (
-                <div className="p-2.5 bg-space-900/90 rounded-lg border border-amber-500/30 flex flex-col gap-2">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Badge variant="amber" className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
-                        SITE B
-                      </Badge>
-                      <span className="font-bold text-amber-300 text-[11px] truncate">
-                        {siteB.name.split('(')[0].trim()}
+                <>
+                  <div className="border-t border-slate-800/80 my-1" />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Badge variant="amber" className="text-[9px] px-1 py-0 uppercase font-bold shrink-0">
+                          SITE B
+                        </Badge>
+                        <span className="font-bold text-amber-300 text-[11px] truncate">
+                          {siteB.name.split('(')[0].trim()}
+                        </span>
+                      </div>
+                      <span className="text-solar-gold font-bold text-xs">
+                        {currentPointB.sun.elevationDeg >= 0 ? '+' : ''}{currentPointB.sun.elevationDeg.toFixed(2)}° Sun El
                       </span>
                     </div>
-                    <span className="text-solar-gold font-bold text-xs">
-                      {currentPointB.sun.elevationDeg >= 0 ? '+' : ''}{currentPointB.sun.elevationDeg.toFixed(2)}° Sun El
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 text-xs">
-                    <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
-                      <span className="text-[9px] text-slate-400">DUTY CYCLE</span>
-                      <span className="text-emerald-400 font-bold text-sm mt-0.5">
-                        {evaluationB.metrics.sunlightPercent.toFixed(1)}%
+                    <div className="grid grid-cols-2 gap-1.5 text-xs">
+                      <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                        <span className="text-[9px] text-slate-400">DUTY CYCLE</span>
+                        <span className="text-emerald-400 font-bold text-sm mt-0.5">
+                          {evaluationB.metrics.sunlightPercent.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
+                        <span className="text-[9px] text-slate-400">DAYLIGHT</span>
+                        <span className="text-solar-gold font-bold text-xs mt-0.5 truncate">
+                          {formatCountdown(evaluationB.metrics.longestLightHours * 3600 * 1000)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-1.5 bg-space-950/60 rounded border border-slate-800/60 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400 text-[10px]">LONGEST NIGHT</span>
+                      <span className="text-rose-400 font-bold">
+                        {formatCountdown(evaluationB.metrics.longestDarkHours * 3600 * 1000)}
                       </span>
                     </div>
-                    <div className="p-2 bg-space-950/80 rounded border border-slate-800/80 flex flex-col">
-                      <span className="text-[9px] text-slate-400">DAYLIGHT</span>
-                      <span className="text-solar-gold font-bold text-xs mt-0.5 truncate">
-                        {formatCountdown(evaluationB.metrics.longestLightHours * 3600 * 1000)}
-                      </span>
-                    </div>
                   </div>
-                  <div className="p-1.5 bg-space-950/60 rounded border border-slate-800/60 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 text-[10px]">LONGEST NIGHT</span>
-                    <span className="text-rose-400 font-bold">
-                      {formatCountdown(evaluationB.metrics.longestDarkHours * 3600 * 1000)}
-                    </span>
-                  </div>
-                </div>
+                </>
               )}
             </div>
           )}
@@ -639,60 +621,15 @@ export const RightTelemetryPanel: React.FC<RightTelemetryPanelProps> = ({
           {/* 8. TELEMETRY & MEASUREMENTS (DEFAULT RIGHT PANEL)              */}
           {/* ============================================================== */}
           {isTelemetryMode && (
-            <div className="flex flex-col gap-2.5 animate-fade-in font-mono">
-              {/* Header with Site Filter Tabs */}
+            <div className="flex flex-col gap-3 animate-fade-in font-mono">
+              {renderSiteTelemetryCard(siteA, evaluationA, currentPointA, 'A', onFlyToSiteA)}
+
               {siteB && evaluationB && currentPointB && (
-                <div className="flex items-center justify-between pb-1 border-b border-slate-800 text-xs">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
-                    TARGET TELEMETRY
-                  </span>
-                  <div className="flex items-center gap-1 bg-space-900 p-0.5 rounded border border-slate-800 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setTelemetryFilter('both')}
-                      className={`px-2 py-0.5 rounded transition-colors ${
-                        telemetryFilter === 'both'
-                          ? 'bg-cyan-500/25 text-cyan-300 font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      BOTH
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTelemetryFilter('A')}
-                      className={`px-2 py-0.5 rounded transition-colors ${
-                        telemetryFilter === 'A'
-                          ? 'bg-cyan-500/25 text-cyan-300 font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      SITE A
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTelemetryFilter('B')}
-                      className={`px-2 py-0.5 rounded transition-colors ${
-                        telemetryFilter === 'B'
-                          ? 'bg-amber-500/25 text-amber-300 font-bold'
-                          : 'text-slate-400 hover:text-slate-200'
-                      }`}
-                    >
-                      SITE B
-                    </button>
-                  </div>
-                </div>
+                <>
+                  <div className="border-t border-slate-800/80 my-1" />
+                  {renderSiteTelemetryCard(siteB, evaluationB, currentPointB, 'B', onFlyToSiteB)}
+                </>
               )}
-
-              {/* Render Site Telemetry Cards */}
-              {(telemetryFilter === 'both' || telemetryFilter === 'A') &&
-                renderSiteTelemetryCard(siteA, evaluationA, currentPointA, 'A', onFlyToSiteA)}
-
-              {siteB &&
-                evaluationB &&
-                currentPointB &&
-                (telemetryFilter === 'both' || telemetryFilter === 'B') &&
-                renderSiteTelemetryCard(siteB, evaluationB, currentPointB, 'B', onFlyToSiteB)}
             </div>
           )}
         </div>
