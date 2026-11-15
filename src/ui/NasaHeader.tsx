@@ -3,22 +3,21 @@ import {
   UIMode,
 } from '../types';
 import {
-  Calendar,
   Share2,
   Check,
   Sliders,
   BookOpen,
   Eye,
 } from 'lucide-react';
-import { Button, Badge, Separator, InfoTooltip } from '@/components/ui';
+import { Button, Badge, InfoTooltip } from '@/components/ui';
 
 interface NasaHeaderProps {
   uiMode: UIMode;
   onSetUIMode: (mode: UIMode) => void;
-  startDateIso: string;
-  onSetStartDate: (dateIso: string) => void;
-  windowDays: number;
-  onSetWindowDays: (days: number) => void;
+  startDateIso?: string;
+  onSetStartDate?: (dateIso: string) => void;
+  windowDays?: number;
+  onSetWindowDays?: (days: number) => void;
   onOpenLearnTour: () => void;
   onOpenMissionOverview?: () => void;
   onShareUrl: () => void;
@@ -27,10 +26,6 @@ interface NasaHeaderProps {
 export const NasaHeader: React.FC<NasaHeaderProps> = ({
   uiMode,
   onSetUIMode,
-  startDateIso,
-  onSetStartDate,
-  windowDays,
-  onSetWindowDays,
   onOpenLearnTour,
   onShareUrl,
 }) => {
@@ -89,31 +84,8 @@ export const NasaHeader: React.FC<NasaHeaderProps> = ({
 
 
 
-        {/* Global Time Window & Actions */}
+        {/* Global Header Actions */}
         <div className="flex items-center gap-2">
-          {/* Epoch Date & Window */}
-          <div className="flex items-center gap-2 bg-space-900 px-2.5 py-1 rounded-lg border border-slate-700/70 text-xs font-mono">
-            <Calendar className="w-3 h-3 text-cyan-400" />
-            <input
-              type="date"
-              value={startDateIso}
-              onChange={(e) => onSetStartDate(e.target.value)}
-              className="bg-transparent text-slate-200 text-xs focus:outline-none cursor-pointer"
-            />
-            <Separator orientation="vertical" className="h-3.5 bg-slate-700" />
-            <select
-              value={windowDays}
-              onChange={(e) => onSetWindowDays(Number(e.target.value))}
-              className="bg-transparent text-slate-200 text-xs focus:outline-none cursor-pointer"
-            >
-              <option value={7}>7d</option>
-              <option value={14}>14d</option>
-              <option value={28}>28d</option>
-              <option value={45}>45d</option>
-              <option value={90}>90d</option>
-            </select>
-          </div>
-
           {/* Learn Tour Guide Button */}
           <Button
             variant="outline"

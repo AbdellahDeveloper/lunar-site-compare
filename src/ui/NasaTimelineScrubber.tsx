@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Sun,
   Radio,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 
@@ -90,34 +91,37 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
     }
   };
 
-  // Direct text entry states for START and END
-  const [startText, setStartText] = useState(new Date(windowStartMs).toISOString().replace('.000', ''));
-  const [endText, setEndText] = useState(new Date(windowEndMs).toISOString().replace('.000', ''));
+  // Date and Time picker states & refs for START and END
+  const startInputRef = useRef<HTMLInputElement | null>(null);
+  const endInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [startVal, setStartVal] = useState(() => new Date(windowStartMs).toISOString().slice(0, 16));
+  const [endVal, setEndVal] = useState(() => new Date(windowEndMs).toISOString().slice(0, 16));
 
   useEffect(() => {
-    setStartText(new Date(windowStartMs).toISOString().replace('.000', ''));
+    setStartVal(new Date(windowStartMs).toISOString().slice(0, 16));
   }, [windowStartMs]);
 
   useEffect(() => {
-    setEndText(new Date(windowEndMs).toISOString().replace('.000', ''));
+    setEndVal(new Date(windowEndMs).toISOString().slice(0, 16));
   }, [windowEndMs]);
 
-  const handleStartSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = new Date(startText).getTime();
-    if (!isNaN(parsed)) {
-      if (onUpdateWindow && parsed < windowEndMs) {
+  const handleStartChange = (val: string) => {
+    setStartVal(val);
+    const parsed = new Date(`${val}:00Z`).getTime();
+    if (!isNaN(parsed) && parsed < windowEndMs) {
+      if (onUpdateWindow) {
         onUpdateWindow(parsed, windowEndMs);
       }
       onScrub(parsed);
     }
   };
 
-  const handleEndSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = new Date(endText).getTime();
-    if (!isNaN(parsed)) {
-      if (onUpdateWindow && parsed > windowStartMs) {
+  const handleEndChange = (val: string) => {
+    setEndVal(val);
+    const parsed = new Date(`${val}:00Z`).getTime();
+    if (!isNaN(parsed) && parsed > windowStartMs) {
+      if (onUpdateWindow) {
         onUpdateWindow(windowStartMs, parsed);
       }
       onScrub(parsed);
@@ -365,53 +369,91 @@ export const NasaTimelineScrubber: React.FC<NasaTimelineScrubberProps> = ({
           </Button>
         </div>
 
-        {/* Center: START, CURRENT, and END UTC Timestamps */}
-        <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-xs">
-          {/* START TIME */}
-          <form
-            onSubmit={handleStartSubmit}
-            className="flex items-center gap-1.5 bg-space-900/90 px-2.5 py-1 rounded-xl border border-emerald-500/30 shadow-sm"
-            title="Epoch Start Time (Edit and press Enter/Jump, or click Jump to scrub to Start)"
+        {/* Center: START and END Date & Time Pickers */}
+        <div className="flex flex-wrap items-center justify-center gap-2.5 font-mono text-xs">
+          {/* START DATE & TIME PICKER */}
+          <div
+            className="flex items-center gap-1.5 bg-space-900/90 px-2.5 py-1 rounded-xl border border-emerald-500/40 shadow-sm group hover:border-emerald-400 transition-colors"
+            title="Epoch Start Date & Time (Click calendar icon or edit to pick date and time)"
           >
-            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">START:</span>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  startInputRef.current?.showPicker();
+                } catch {
+                  startInputRef.current?.focus();
+                }
+              }}
+              className="text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+              title="Open Date & Time Picker"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
+              START:
+            </span>
             <input
-              type="text"
-              value={startText}
-              onChange={(e) => setStartText(e.target.value)}
-              className="bg-transparent text-slate-100 font-medium w-36 sm:w-40 text-[11px] focus:outline-none focus:text-white"
+              ref={startInputRef}
+              type="datetime-local"
+              value={startVal}
+              onChange={(e) => handleStartChange(e.target.value)}
+              className="bg-transparent text-slate-100 font-mono text-xs focus:outline-none focus:text-white cursor-pointer [color-scheme:dark]"
             />
+            <span className="text-[9px] text-slate-500 font-bold">UTC</span>
             <Button
-              type="submit"
+              type="button"
               size="xs"
               variant="ghost"
+              onClick={() => onScrub(windowStartMs)}
               className="h-5 px-1.5 text-[10px] text-emerald-300 hover:text-white hover:bg-emerald-500/20 rounded font-bold"
+              title="Scrub time needle to Start"
             >
               Jump
             </Button>
-          </form>
+          </div>
 
-          {/* END TIME */}
-          <form
-            onSubmit={handleEndSubmit}
-            className="flex items-center gap-1.5 bg-space-900/90 px-2.5 py-1 rounded-xl border border-amber-500/30 shadow-sm"
-            title="Epoch End Time (Edit and press Enter/Jump, or click Jump to scrub to End)"
+          {/* END DATE & TIME PICKER */}
+          <div
+            className="flex items-center gap-1.5 bg-space-900/90 px-2.5 py-1 rounded-xl border border-amber-500/40 shadow-sm group hover:border-amber-400 transition-colors"
+            title="Epoch End Date & Time (Click calendar icon or edit to pick date and time)"
           >
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">END:</span>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  endInputRef.current?.showPicker();
+                } catch {
+                  endInputRef.current?.focus();
+                }
+              }}
+              className="text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+              title="Open Date & Time Picker"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+              END:
+            </span>
             <input
-              type="text"
-              value={endText}
-              onChange={(e) => setEndText(e.target.value)}
-              className="bg-transparent text-slate-100 font-medium w-36 sm:w-40 text-[11px] focus:outline-none focus:text-white"
+              ref={endInputRef}
+              type="datetime-local"
+              value={endVal}
+              onChange={(e) => handleEndChange(e.target.value)}
+              className="bg-transparent text-slate-100 font-mono text-xs focus:outline-none focus:text-white cursor-pointer [color-scheme:dark]"
             />
+            <span className="text-[9px] text-slate-500 font-bold">UTC</span>
             <Button
-              type="submit"
+              type="button"
               size="xs"
               variant="ghost"
+              onClick={() => onScrub(windowEndMs)}
               className="h-5 px-1.5 text-[10px] text-amber-300 hover:text-white hover:bg-amber-500/20 rounded font-bold"
+              title="Scrub time needle to End"
             >
               Jump
             </Button>
-          </form>
+          </div>
         </div>
 
         {/* Right: Simulation Speed Multipliers */}

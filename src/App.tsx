@@ -477,10 +477,6 @@ export const App: React.FC = () => {
       <NasaHeader
         uiMode={uiMode}
         onSetUIMode={setUIMode}
-        startDateIso={startDateIso}
-        onSetStartDate={setStartDateIso}
-        windowDays={windowDays}
-        onSetWindowDays={setWindowDays}
         onOpenLearnTour={() => setShowLearnTourModal(true)}
         onOpenMissionOverview={() => setShowMissionOverviewModal(true)}
         onShareUrl={handleShareUrl}
