@@ -35,46 +35,115 @@ function createSunCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
-// Procedural high-resolution Earth model with atmosphere
+// Procedural simple low-cost Earth texture (distant natural appearance, no shiny halo)
 function createEarthCanvas(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
   if (ctx) {
-    // Atmospheric blue halo
-    const halo = ctx.createRadialGradient(64, 64, 36, 64, 64, 64);
-    halo.addColorStop(0, 'rgba(56, 189, 248, 0.85)');
-    halo.addColorStop(0.7, 'rgba(56, 189, 248, 0.35)');
-    halo.addColorStop(1, 'rgba(56, 189, 248, 0)');
-    ctx.fillStyle = halo;
+    const cx = 64;
+    const cy = 64;
+    const r = 50;
+
+    // 1. Clip to planet disk
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(64, 64, 64, 0, Math.PI * 2);
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.clip();
+
+    // 2. Deep Ocean Base (realistic dark ocean blue, not bright neon)
+    const oceanGrad = ctx.createRadialGradient(cx - 15, cy - 15, 5, cx, cy, r);
+    oceanGrad.addColorStop(0, '#1c4966');
+    oceanGrad.addColorStop(0.7, '#13354d');
+    oceanGrad.addColorStop(1, '#0c2233');
+    ctx.fillStyle = oceanGrad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    // 3. Polar Ice Caps (Arctic and Antarctica)
+    ctx.fillStyle = '#e2e8f0';
+    // North pole ice
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 42, 22, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // South pole ice
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 43, 26, 8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ocean sphere
-    ctx.fillStyle = '#0284c7';
+    // 4. Continents & Landmasses (natural muted olive greens & desert tans)
+    // Eurasia & Africa (center-right)
+    ctx.fillStyle = '#2f5936'; // temperate green
     ctx.beginPath();
-    ctx.arc(64, 64, 40, 0, Math.PI * 2);
+    ctx.ellipse(cx + 8, cy - 16, 20, 14, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Continents
-    ctx.fillStyle = '#10b981';
+    // Sahara / Middle East (warm desert tan)
+    ctx.fillStyle = '#6b5c3e';
     ctx.beginPath();
-    ctx.arc(55, 58, 15, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(74, 70, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(72, 50, 9, 0, Math.PI * 2);
+    ctx.ellipse(cx + 10, cy - 4, 15, 8, 0.1, 0, Math.PI * 2);
     ctx.fill();
 
-    // Clouds
+    // Africa continent body
+    ctx.fillStyle = '#335c3b';
+    ctx.beginPath();
+    ctx.ellipse(cx + 8, cy + 12, 14, 18, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Americas (left side)
+    ctx.fillStyle = '#2d5434';
+    // North America
+    ctx.beginPath();
+    ctx.ellipse(cx - 26, cy - 18, 15, 12, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // South America
+    ctx.beginPath();
+    ctx.ellipse(cx - 20, cy + 16, 11, 19, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Australia & Pacific islands (bottom-right)
+    ctx.fillStyle = '#5c5237';
+    ctx.beginPath();
+    ctx.ellipse(cx + 34, cy + 20, 9, 7, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Natural Cloud Bands (realistic white swirling weather systems)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    // Tropical convergence / equatorial cloud stream
     ctx.beginPath();
-    ctx.arc(60, 68, 18, 0, Math.PI);
+    ctx.ellipse(cx, cy + 2, 46, 6, -0.05, 0, Math.PI * 2);
     ctx.fill();
+
+    // Northern mid-latitude cyclone whorl
+    ctx.beginPath();
+    ctx.arc(cx - 10, cy - 25, 16, 0.2, Math.PI * 1.3);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.stroke();
+
+    // Southern storm band
+    ctx.beginPath();
+    ctx.arc(cx + 5, cy + 28, 28, Math.PI * 0.9, Math.PI * 1.8);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.stroke();
+
+    // 6. Subtle Day/Night Terminator Shading (adds 3D planetary depth, no glow)
+    const shadowGrad = ctx.createRadialGradient(cx - 25, cy - 25, 10, cx + 15, cy + 15, r * 1.15);
+    shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    shadowGrad.addColorStop(0.65, 'rgba(0, 5, 12, 0.15)');
+    shadowGrad.addColorStop(1, 'rgba(0, 5, 12, 0.65)');
+    ctx.fillStyle = shadowGrad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    ctx.restore();
+
+    // 7. Very faint, razor-thin planetary limb (clean edge, not shiny)
+    ctx.strokeStyle = 'rgba(125, 180, 220, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
   }
   return canvas;
 }
@@ -1133,42 +1202,29 @@ export const CesiumLunarViewport = forwardRef<CesiumViewportHandle, CesiumLunarV
       },
     });
 
-    // 2. Dynamic 3D Earth Model (Atmosphere Halo Billboard + Core Point + Ellipsoid + Label)
+    // 2. Dynamic 3D Earth Model (Clean, Low-Cost Distant Planetary Billboard + Clean Label)
     viewer.entities.add({
       id: 'earth_model',
       name: 'Earth Model',
       position: new Cesium.CallbackPositionProperty(() => earthPosRef.current, false),
       billboard: {
         image: earthCanvasRef.current,
-        width: 68,
-        height: 68,
+        width: 52,
+        height: 52,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      },
-      point: {
-        pixelSize: 26,
-        color: Cesium.Color.fromCssColorString('#0284c7'),
-        outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
-        outlineWidth: 3,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      },
-      ellipsoid: {
-        radii: new Cesium.Cartesian3(637100, 637100, 637100),
-        material: Cesium.Color.fromCssColorString('#0284c7'),
-        outline: true,
-        outlineColor: Cesium.Color.fromCssColorString('#38bdf8'),
       },
       label: {
         text: 'EARTH',
-        font: 'bold 22px "JetBrains Mono", monospace',
+        font: 'bold 20px "JetBrains Mono", monospace',
         scale: 0.5,
-        fillColor: Cesium.Color.fromCssColorString('#38bdf8'),
+        fillColor: Cesium.Color.fromCssColorString('#7dd3fc'),
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 3,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         showBackground: true,
         backgroundColor: Cesium.Color.fromCssColorString('rgba(2, 6, 23, 0.85)'),
-        backgroundPadding: new Cesium.Cartesian2(10, 5),
-        pixelOffset: new Cesium.Cartesian2(0, -40),
+        backgroundPadding: new Cesium.Cartesian2(8, 4),
+        pixelOffset: new Cesium.Cartesian2(0, -34),
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
     });

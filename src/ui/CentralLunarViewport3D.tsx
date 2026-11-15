@@ -168,25 +168,16 @@ export const CentralLunarViewport3D: React.FC<CentralLunarViewport3DProps> = ({
     sunGroup.add(new THREE.Mesh(coronaGeo, coronaMat));
     scene.add(sunGroup);
 
-    // Earth Sphere
+    // Earth Sphere (simple, natural, non-shiny)
     const earthGroup = new THREE.Group();
-    const earthGeo = new THREE.SphereGeometry(0.48, 32, 32);
+    const earthGeo = new THREE.SphereGeometry(0.48, 24, 24);
     const earthMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      roughness: 0.6,
-      metalness: 0.1,
+      color: 0x164366,
+      roughness: 0.85,
+      metalness: 0.0,
     });
     const earthMesh = new THREE.Mesh(earthGeo, earthMat);
     earthGroup.add(earthMesh);
-    // Earth Atmosphere Glow
-    const earthAtmGeo = new THREE.SphereGeometry(0.56, 32, 32);
-    const earthAtmMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8,
-      transparent: true,
-      opacity: 0.25,
-      side: THREE.BackSide,
-    });
-    earthGroup.add(new THREE.Mesh(earthAtmGeo, earthAtmMat));
     scene.add(earthGroup);
 
     // Helper: Convert selenographic (lat, lon) to 3D Cartesian
