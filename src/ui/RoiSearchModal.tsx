@@ -7,7 +7,6 @@ import {
   Zap,
   MapPin,
   CheckCircle2,
-  X,
   RotateCcw,
   Compass,
 } from 'lucide-react';
@@ -68,9 +67,9 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl font-mono select-none bg-space-950 border-slate-800 text-slate-100 shadow-2xl p-6">
+      <DialogContent onClose={onClose} className="max-w-2xl font-mono select-none bg-space-950 border-slate-800 text-slate-100 shadow-2xl p-6">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-950/50">
                 <Sparkles className="w-5 h-5 text-cyan-300" />
@@ -89,12 +88,6 @@ export const RoiSearchModal: React.FC<RoiSearchModalProps> = ({
                 </DialogDescription>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-100 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
           </div>
         </DialogHeader>
 

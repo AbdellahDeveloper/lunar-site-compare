@@ -4,7 +4,6 @@ import {
   Download,
   Share2,
   Check,
-  X,
   Award,
   Sun,
   Radio,
@@ -84,9 +83,9 @@ export const AstronautBadgeModal: React.FC<AstronautBadgeModalProps> = ({
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg font-mono select-none bg-space-950 border-cyan-500/30 text-slate-100 shadow-2xl p-6">
+      <DialogContent onClose={onClose} className="max-w-lg font-mono select-none bg-space-950 border-cyan-500/30 text-slate-100 shadow-2xl p-6">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
                 <Award className="w-4 h-4" />
@@ -100,12 +99,6 @@ export const AstronautBadgeModal: React.FC<AstronautBadgeModalProps> = ({
                 </DialogDescription>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-slate-400 hover:text-slate-100 p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </DialogHeader>
 
