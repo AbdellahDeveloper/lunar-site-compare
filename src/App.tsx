@@ -230,6 +230,16 @@ export const App: React.FC = () => {
     params.set('sB', siteB.id);
     const url = `${window.location.origin}${window.location.pathname}#${params.toString()}`;
     navigator.clipboard.writeText(url);
+
+    if (uiMode === 'simple') {
+      const sunA = evaluationA.metrics.longestLightHours;
+      const sunB = evaluationB ? evaluationB.metrics.longestLightHours : 0;
+      const earthA = evaluationA.metrics.earthVisPercent;
+      const earthB = evaluationB?.metrics ? evaluationB.metrics.earthVisPercent : 0;
+      const winnerSite = (sunB + earthB) > (sunA + earthA) ? siteB : siteA;
+      setSelectedBadgeSite(winnerSite);
+      setShowBadgeModal(true);
+    }
   };
 
   // Resolve Horizon Masks
@@ -718,7 +728,7 @@ export const App: React.FC = () => {
               <ResizablePanel
                 panelRef={rightPanelRef}
                 id="right-sidebar"
-                defaultSize="28%"
+                defaultSize="30%"
                 minSize={330}
                 maxSize={650}
                 collapsible={true}

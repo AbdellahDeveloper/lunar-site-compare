@@ -334,9 +334,9 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
             side="bottom"
             content={
               <div className="flex flex-col gap-1 max-w-xs">
-                <span className="font-bold text-slate-100 text-xs">Share Mission</span>
+                <span className="font-bold text-slate-100 text-xs">Share & Download Badge</span>
                 <p className="text-[11px] text-slate-300">
-                  Copy a shareable link with current sites and analysis parameters.
+                  Open your official Artemis Commander Moon Base Badge to download as image (PNG) or share the mission link.
                 </p>
               </div>
             }
@@ -359,7 +359,7 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
 
               <div className="flex flex-col items-center">
                 <span className={`text-[10.5px] font-medium leading-tight ${copied ? 'font-bold text-emerald-300' : 'text-slate-200'}`}>
-                  {copied ? 'Copied!' : 'Share'}
+                  {copied ? 'Badge Opened!' : 'Share & Badge'}
                 </span>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span
@@ -369,7 +369,7 @@ export const TopToolRibbon: React.FC<TopToolRibbonProps> = React.memo(({
                         : 'border-slate-800 text-slate-500 bg-space-950/60 group-hover:text-slate-400'
                     }`}
                   >
-                    {copied ? 'Link Ready' : 'Share Link'}
+                    {copied ? 'Link Ready' : 'Badge & Link'}
                   </span>
                 </div>
               </div>

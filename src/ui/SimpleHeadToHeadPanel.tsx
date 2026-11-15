@@ -188,124 +188,124 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
           <div className="flex flex-col gap-2.5">
             {/* 1. Solar Power */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs gap-2">
-                <span className="flex items-center gap-1.5 text-solar-gold font-bold whitespace-nowrap truncate">
+              <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                <span className="flex items-center gap-1.5 text-solar-gold font-bold whitespace-nowrap truncate min-w-0">
                   <Sun className="w-3.5 h-3.5 shrink-0" />
                   Solar Daylight
                 </span>
-                <Badge
-                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
+                <span
+                  className={`inline-flex items-center justify-center font-mono font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap leading-none ${
                     sunWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : sunWinner === 'B'
                       ? 'bg-amber-950 text-amber-300 border-amber-500/50'
-                      : 'bg-slate-800 text-slate-400'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}
                 >
                   {sunWinner === 'TIE' ? 'TIE' : `SITE ${sunWinner} WINS`}
-                </Badge>
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site A:</span>
-                  <span className="font-bold text-cyan-300 ml-1 truncate">{sunDaysA.toFixed(1)} Days</span>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site A</span>
+                  <span className="font-bold text-cyan-300 ml-1.5 truncate">{sunDaysA.toFixed(1)} Days</span>
                 </div>
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site B:</span>
-                  <span className="font-bold text-amber-300 ml-1 truncate">{sunDaysB.toFixed(1)} Days</span>
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site B</span>
+                  <span className="font-bold text-amber-300 ml-1.5 truncate">{sunDaysB.toFixed(1)} Days</span>
                 </div>
               </div>
             </Card>
 
             {/* 2. Earth Signal */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs gap-2">
-                <span className="flex items-center gap-1.5 text-cyan-400 font-bold whitespace-nowrap truncate">
+              <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                <span className="flex items-center gap-1.5 text-cyan-400 font-bold whitespace-nowrap truncate min-w-0">
                   <Radio className="w-3.5 h-3.5 shrink-0" />
                   Earth Contact
                 </span>
-                <Badge
-                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
+                <span
+                  className={`inline-flex items-center justify-center font-mono font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap leading-none ${
                     earthWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : earthWinner === 'B'
                       ? 'bg-amber-950 text-amber-300 border-amber-500/50'
-                      : 'bg-slate-800 text-slate-400'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}
                 >
                   {earthWinner === 'TIE' ? 'TIE' : `SITE ${earthWinner} WINS`}
-                </Badge>
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site A:</span>
-                  <span className="font-bold text-cyan-300 ml-1 truncate">{earthPercentA.toFixed(0)}%</span>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site A</span>
+                  <span className="font-bold text-cyan-300 ml-1.5 truncate">{earthPercentA.toFixed(0)}%</span>
                 </div>
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site B:</span>
-                  <span className="font-bold text-amber-300 ml-1 truncate">{earthPercentB.toFixed(0)}%</span>
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site B</span>
+                  <span className="font-bold text-amber-300 ml-1.5 truncate">{earthPercentB.toFixed(0)}%</span>
                 </div>
               </div>
             </Card>
 
             {/* 3. Water Ice Access */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs gap-2">
-                <span className="flex items-center gap-1.5 text-teal-400 font-bold whitespace-nowrap truncate">
+              <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                <span className="flex items-center gap-1.5 text-teal-400 font-bold whitespace-nowrap truncate min-w-0">
                   <Sparkles className="w-3.5 h-3.5 shrink-0" />
                   Water Ice Access
                 </span>
-                <Badge
-                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
+                <span
+                  className={`inline-flex items-center justify-center font-mono font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap leading-none ${
                     iceWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : iceWinner === 'B'
                       ? 'bg-amber-950 text-amber-300 border-amber-500/50'
-                      : 'bg-slate-800 text-slate-400'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}
                 >
                   {iceWinner === 'TIE' ? 'TIE' : `SITE ${iceWinner} WINS`}
-                </Badge>
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site A:</span>
-                  <span className="font-bold text-cyan-300 ml-1 truncate">{iceDistA.toFixed(1)} km</span>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site A</span>
+                  <span className="font-bold text-cyan-300 ml-1.5 truncate">{iceDistA.toFixed(1)} km</span>
                 </div>
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site B:</span>
-                  <span className="font-bold text-amber-300 ml-1 truncate">{iceDistB.toFixed(1)} km</span>
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site B</span>
+                  <span className="font-bold text-amber-300 ml-1.5 truncate">{iceDistB.toFixed(1)} km</span>
                 </div>
               </div>
             </Card>
 
             {/* 4. Landing Safety */}
             <Card className="p-2.5 bg-space-900/70 border-slate-800 flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-xs gap-2">
-                <span className="flex items-center gap-1.5 text-emerald-400 font-bold whitespace-nowrap truncate">
+              <div className="flex items-center justify-between text-xs gap-2 min-w-0">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold whitespace-nowrap truncate min-w-0">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
                   Terrain Flatness
                 </span>
-                <Badge
-                  className={`text-[9px] py-0 h-5 px-2 font-bold whitespace-nowrap shrink-0 ${
+                <span
+                  className={`inline-flex items-center justify-center font-mono font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 whitespace-nowrap leading-none ${
                     slopeWinner === 'A'
                       ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
                       : slopeWinner === 'B'
                       ? 'bg-amber-950 text-amber-300 border-amber-500/50'
-                      : 'bg-slate-800 text-slate-400'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
                   }`}
                 >
                   {slopeWinner === 'TIE' ? 'TIE' : `SITE ${slopeWinner} WINS`}
-                </Badge>
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site A:</span>
-                  <span className="font-bold text-cyan-300 ml-1 truncate">{slopeA.toFixed(1)}°</span>
+              <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site A</span>
+                  <span className="font-bold text-cyan-300 ml-1.5 truncate">{slopeA.toFixed(1)}°</span>
                 </div>
-                <div className="flex items-center justify-between px-2 py-1 bg-space-950/70 rounded border border-slate-800 whitespace-nowrap overflow-hidden">
-                  <span className="text-slate-400 shrink-0">Site B:</span>
-                  <span className="font-bold text-amber-300 ml-1 truncate">{slopeB.toFixed(1)}°</span>
+                <div className="flex items-center justify-between px-2.5 py-1.5 bg-space-950/80 rounded border border-slate-800/90 whitespace-nowrap min-w-0">
+                  <span className="text-slate-400 text-[10px] shrink-0 font-medium">Site B</span>
+                  <span className="font-bold text-amber-300 ml-1.5 truncate">{slopeB.toFixed(1)}°</span>
                 </div>
               </div>
             </Card>
@@ -313,14 +313,14 @@ export const SimpleHeadToHeadPanel: React.FC<SimpleHeadToHeadPanelProps> = React
 
           {/* Grand Verdict Card */}
           <div className="p-3.5 rounded-xl bg-gradient-to-br from-space-900 via-space-950 to-slate-900 border-2 border-emerald-500/40 shadow-lg flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5 uppercase whitespace-nowrap">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <span className="text-xs font-extrabold text-emerald-300 flex items-center gap-1.5 uppercase whitespace-nowrap min-w-0">
                 <Trophy className="w-4 h-4 text-solar-gold shrink-0" />
                 Overall Winner
               </span>
-              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold text-[10px] h-5 px-2 whitespace-nowrap shrink-0">
+              <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold text-[9.5px] px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0 leading-none inline-flex items-center justify-center">
                 {overallWinner === 'TIE' ? 'BALANCED MATCH' : `SITE ${overallWinner} WINS (${Math.max(winsA, winsB)}/4)`}
-              </Badge>
+              </span>
             </div>
 
             <div className="text-xs font-bold text-white">
